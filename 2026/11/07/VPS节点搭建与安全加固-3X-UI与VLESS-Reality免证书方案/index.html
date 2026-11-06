@@ -1,0 +1,305 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战 | Eirialan</title><meta name="author" content="Eiralan"><meta name="copyright" content="Eiralan"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="记录在 CloudCone 上用 3x-ui 搭建 VLESS + REALITY 节点的过程，包括 SSH 隧道、端口检查和 Mihomo 握手排查。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战">
+<meta property="og:url" content="https://blog.bobocloud.top/2026/11/07/VPS%E8%8A%82%E7%82%B9%E6%90%AD%E5%BB%BA%E4%B8%8E%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA-3X-UI%E4%B8%8EVLESS-Reality%E5%85%8D%E8%AF%81%E4%B9%A6%E6%96%B9%E6%A1%88/index.html">
+<meta property="og:site_name" content="Eirialan">
+<meta property="og:description" content="记录在 CloudCone 上用 3x-ui 搭建 VLESS + REALITY 节点的过程，包括 SSH 隧道、端口检查和 Mihomo 握手排查。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog.bobocloud.top/img/sunset.jpg">
+<meta property="article:published_time" content="2026-11-06T16:55:00.000Z">
+<meta property="article:modified_time" content="2026-11-06T17:07:42.000Z">
+<meta property="article:author" content="Eiralan">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="REALITY">
+<meta property="article:tag" content="SSH">
+<meta property="article:tag" content="VLESS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog.bobocloud.top/img/sunset.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战",
+  "url": "https://blog.bobocloud.top/2026/11/07/VPS%E8%8A%82%E7%82%B9%E6%90%AD%E5%BB%BA%E4%B8%8E%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA-3X-UI%E4%B8%8EVLESS-Reality%E5%85%8D%E8%AF%81%E4%B9%A6%E6%96%B9%E6%A1%88/",
+  "image": "https://blog.bobocloud.top/img/sunset.jpg",
+  "datePublished": "2026-11-06T16:55:00.000Z",
+  "dateModified": "2026-11-06T17:07:42.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Eiralan",
+      "url": "https://blog.bobocloud.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/site-icon.ico"><link rel="canonical" href="https://blog.bobocloud.top/2026/11/07/VPS%E8%8A%82%E7%82%B9%E6%90%AD%E5%BB%BA%E4%B8%8E%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA-3X-UI%E4%B8%8EVLESS-Reality%E5%85%8D%E8%AF%81%E4%B9%A6%E6%96%B9%E6%A1%88/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>.avatar-img img, i.fas, i.fab, i.far, .social-icon i { animation: none !important; transform: none !important; }</style><link rel="apple-touch-icon" sizes="180x180" href="/img/favicon.png"><link rel="preload" href="/img/lighthouse.jpg" as="image"><style>#footer { background-color: #3d3d3d !important; }</style><style>#page-header { background-color: #2d3a4b !important; }</style><style>@media (max-width: 768px){#page-header.full_page{background-image: url('/img/hero-mobile.jpg') !important;background-attachment: scroll !important;background-size: cover !important;background-position: center top !important;}}</style><meta name="generator" content="Hexo 8.1.1"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/pear.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">9</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/sunset.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Eirialan</span></a><a class="nav-page-title" href="/"><span class="site-name">VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-06T16:55:00.000Z" title="发表于 2026-11-07 00:55:00">2026-11-07</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-06T17:07:42.000Z" title="更新于 2026-11-07 01:07:42">2026-11-07</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BF%90%E7%BB%B4%E5%AE%9E%E8%B7%B5/">运维实践</a></span></div><div class="meta-secondline"></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h2 id="一、这次搭了什么"><a href="#一、这次搭了什么" class="headerlink" title="一、这次搭了什么"></a>一、这次搭了什么</h2><p>我买了一台 CloudCone VPS，想搭一个日常自用的节点，也想在 Windows 上方便地管理它。我给 Xray 留了公网 <code>443/TCP</code>，把 3x-ui 面板绑在服务器的环回地址上。需要改配置时，再从本机开 SSH 隧道进去。</p>
+<p>传输选了 VLESS + RAW + REALITY，客户端启用 XTLS Vision。我先用 v2rayN 跑通，再拿同一个入站测试 Clash Verge Rev。RAW 的参数少，适合先把连接跑通。XHTTP 和 Hysteria 2 暂时没做同机对比。</p>
+<h3 id="实测环境"><a href="#实测环境" class="headerlink" title="实测环境"></a>实测环境</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>本次环境</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>VPS</td>
+<td>CloudCone 洛杉矶，1 vCPU、系统可见内存约 765 MiB、55 GiB 磁盘</td>
+</tr>
+<tr>
+<td>系统</td>
+<td>AlmaLinux 9.8，运行内核 <code>5.14.0-687.66.1.el9_8.x86_64</code></td>
+</tr>
+<tr>
+<td>服务端</td>
+<td>3x-ui <code>3.11.0</code>，SQLite，Xray <code>26.10.21</code></td>
+</tr>
+<tr>
+<td>Windows 客户端</td>
+<td>v2rayN；Clash Verge Rev <code>2.5.10</code>，Mihomo <code>1.19.33</code></td>
+</tr>
+</tbody></table>
+<p>下面的 IP、UUID、密钥和面板路径都用占位符。版本号是这次复现问题时记录的。</p>
+<h3 id="REALITY-的证书是怎么回事"><a href="#REALITY-的证书是怎么回事" class="headerlink" title="REALITY 的证书是怎么回事"></a>REALITY 的证书是怎么回事</h3><p>这个入站无需为 VPS 购买域名或申请证书。配置里的 <code>target</code> 指向一个 TLS 站点，客户端用对应的 SNI 发起握手。认证成功时，客户端验证的是 REALITY 的临时可信证书。握手被拒绝并转发到目标站时，客户端可能收到目标站的真实证书。服务端持有 REALITY 私钥，客户端用对应的公钥和 Short ID 完成握手，VLESS 再按 UUID 识别用户。</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://github.com/XTLS/REALITY/blob/main/README.md">REALITY 官方说明</a>和 <a target="_blank" rel="noopener" href="https://xtls.github.io/en/config/transports/reality.html">Xray REALITY 配置文档</a>。</p>
+<h2 id="二、准备服务器"><a href="#二、准备服务器" class="headerlink" title="二、准备服务器"></a>二、准备服务器</h2><p>先用 CloudCone 邮件里的初始密码登录，配置本机的 SSH 公钥，再从新开的 PowerShell 窗口确认可以用密钥登录。</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh <span class="literal">-o</span> PreferredAuthentications=publickey <span class="literal">-i</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.ssh\id_ed25519&quot;</span> root@YOUR_SERVER_IP</span><br></pre></td></tr></table></figure>
+
+<p>更新系统后，我用 <code>uname -r</code> 确认正在运行新内核。包管理器显示安装了新 <code>kernel-core</code> 时，运行中的版本仍要以 <code>uname -r</code> 为准。</p>
+<h3 id="检查-BBR"><a href="#检查-BBR" class="headerlink" title="检查 BBR"></a>检查 BBR</h3><p><code>x-ui</code> 菜单提供启用 BBR 的选项。部署完成后，我用下面两条命令检查当前状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sysctl net.ipv4.tcp_congestion_control</span><br><span class="line">sysctl net.core.default_qdisc</span><br></pre></td></tr></table></figure>
+
+<p>这台 VPS 的返回值分别是 <code>bbr</code> 和 <code>fq</code>。</p>
+<h2 id="三、安装面板并通过-SSH-访问"><a href="#三、安装面板并通过-SSH-访问" class="headerlink" title="三、安装面板并通过 SSH 访问"></a>三、安装面板并通过 SSH 访问</h2><h3 id="安装时怎么选"><a href="#安装时怎么选" class="headerlink" title="安装时怎么选"></a>安装时怎么选</h3><p>这次在 VPS 上运行的是 3x-ui 官方安装命令。脚本来自 <code>master</code>，重装时记下安装器实际装出的版本，方便对照菜单和配置行为。<a target="_blank" rel="noopener" href="https://docs.sanaei.dev/">3x-ui 官方文档</a></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bash &lt;(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)</span><br></pre></td></tr></table></figure>
+
+<p>我选了 <strong>SQLite</strong>，面板端口填 <code>54321</code>，证书步骤选 <strong>Skip SSL</strong>，随后对 <strong>Bind the panel to 127.0.0.1 only?</strong> 选 <code>y</code>。面板 HTTP 只在环回地址上提供，跨网络访问由 SSH 隧道加密。用 <code>x-ui</code> 菜单查看实际的面板端口和 <code>WebBasePath</code>，后面访问时要带上完整路径。</p>
+<h3 id="在-Windows-上保存-SSH-别名"><a href="#在-Windows-上保存-SSH-别名" class="headerlink" title="在 Windows 上保存 SSH 别名"></a>在 Windows 上保存 SSH 别名</h3><p>编辑本机的 <code>$env:USERPROFILE\.ssh\config</code>，把下面的地址换成 VPS 公网 IPv4。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Host my-vps-panel</span><br><span class="line">    HostName YOUR_SERVER_IP</span><br><span class="line">    User root</span><br><span class="line">    IdentityFile ~/.ssh/id_ed25519</span><br><span class="line">    LocalForward 127.0.0.1:2222 127.0.0.1:54321</span><br><span class="line">    ExitOnForwardFailure yes</span><br></pre></td></tr></table></figure>
+
+<p>在 PowerShell 运行下面的命令，保持窗口开着。</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh <span class="literal">-N</span> my<span class="literal">-vps-panel</span></span><br></pre></td></tr></table></figure>
+
+<p><code>-N</code> 让 SSH 建立转发而不执行远程命令。终端没有提示符是正常的，按 <code>Ctrl+C</code> 会断开隧道。随后在浏览器打开下列地址，用面板账号登录。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:2222/YOUR_PANEL_PATH/</span><br></pre></td></tr></table></figure>
+
+<p>如果浏览器返回 <code>404</code>，先核对 <code>WebBasePath</code>。如果 SSH 报 <code>Address already in use</code>，查本机 <code>2222</code> 是否被占用。可以换一个本地端口，浏览器地址也跟着换。<a target="_blank" rel="noopener" href="https://man.openbsd.org/ssh">OpenSSH 手册</a></p>
+<h2 id="四、添加-VLESS-入站和客户端"><a href="#四、添加-VLESS-入站和客户端" class="headerlink" title="四、添加 VLESS 入站和客户端"></a>四、添加 VLESS 入站和客户端</h2><p>在 3x-ui 的「入站列表」新增入站。下面是这次实际跑通的设置。</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>设置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>协议</td>
+<td><code>VLESS</code></td>
+</tr>
+<tr>
+<td>监听地址和端口</td>
+<td>面板填 <code>0.0.0.0</code>，端口 <code>443</code></td>
+</tr>
+<tr>
+<td>传输</td>
+<td><code>RAW</code>，Mihomo 对应 <code>network: tcp</code></td>
+</tr>
+<tr>
+<td>安全</td>
+<td><code>REALITY</code></td>
+</tr>
+<tr>
+<td>目标与 SNI</td>
+<td><code>www.microsoft.com:443</code>，客户端 SNI 选 <code>www.microsoft.com</code></td>
+</tr>
+<tr>
+<td>uTLS 指纹</td>
+<td><code>chrome</code></td>
+</tr>
+<tr>
+<td>嗅探</td>
+<td>关闭</td>
+</tr>
+</tbody></table>
+<p>生成 REALITY 密钥对后，把私钥留在服务器上。服务端可以设置多个 SNI 和 Short ID，客户端各选一个。Short ID 从允许列表原样复制，在 YAML 里加引号，避免开头的 <code>0</code> 被解析掉。<code>SpiderX</code> 是 Xray 客户端进入爬虫模式时使用的起始路径，这次填 <code>/</code>。</p>
+<p>保存入站以后，还要在入站下面点「添加客户端」，生成 UUID，在客户端凭据里把 Flow 设为 <code>xtls-rprx-vision</code>，再导出分享链接。只创建入站时，导出的客户端列表是空的。如果给其他人用，可以为每个人单独添加 UUID，方便分开统计和撤销。</p>
+<p>这次 Xray 入站关闭嗅探也能正常使用。Clash 的本地分流由 Mihomo 按自己的规则执行。以后如果要在 Xray 服务端按域名做路由，再根据需求考虑启用嗅探和 <code>routeOnly</code>。<a target="_blank" rel="noopener" href="https://xtls.github.io/en/config/inbound.html#sniffingobject">Xray 入站与嗅探文档</a></p>
+<h2 id="五、导入客户端"><a href="#五、导入客户端" class="headerlink" title="五、导入客户端"></a>五、导入客户端</h2><h3 id="v2rayN"><a href="#v2rayN" class="headerlink" title="v2rayN"></a>v2rayN</h3><p>导入 3x-ui 导出的 <code>vless://</code> 单节点链接，确认地址和端口指向 VPS 的公网 IPv4 和 <code>443</code>。我用这个节点打开 YouTube，先确认服务端的入站和客户端凭据能用。</p>
+<h3 id="Clash-Verge-Rev-和-Clash-Mi"><a href="#Clash-Verge-Rev-和-Clash-Mi" class="headerlink" title="Clash Verge Rev 和 Clash Mi"></a>Clash Verge Rev 和 Clash Mi</h3><p>电脑的 Clash Verge Rev 和手机的 Clash Mi 都可以导入 Mihomo YAML。下面是我给这个 IPv4 节点用的最小配置。<code>uuid</code>、<code>public-key</code>、<code>short-id</code> 和 SNI 按实际入站填写。它会把交给 Clash 处理的流量交给 <code>VPS</code> 组，方便单独验证这个节点。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">mode:</span> <span class="string">rule</span></span><br><span class="line"></span><br><span class="line"><span class="attr">proxies:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CloudCone-LAX</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">vless</span></span><br><span class="line">    <span class="attr">server:</span> <span class="string">YOUR_SERVER_IP</span></span><br><span class="line">    <span class="attr">port:</span> <span class="number">443</span></span><br><span class="line">    <span class="attr">uuid:</span> <span class="string">&quot;YOUR_CLIENT_UUID&quot;</span></span><br><span class="line">    <span class="attr">network:</span> <span class="string">tcp</span></span><br><span class="line">    <span class="attr">flow:</span> <span class="string">xtls-rprx-vision</span></span><br><span class="line">    <span class="attr">tls:</span> <span class="literal">true</span></span><br><span class="line">    <span class="attr">servername:</span> <span class="string">&quot;www.microsoft.com&quot;</span></span><br><span class="line">    <span class="attr">client-fingerprint:</span> <span class="string">chrome</span></span><br><span class="line">    <span class="attr">reality-opts:</span></span><br><span class="line">      <span class="attr">public-key:</span> <span class="string">&quot;YOUR_REALITY_PUBLIC_KEY&quot;</span></span><br><span class="line">      <span class="attr">short-id:</span> <span class="string">&quot;YOUR_SHORT_ID&quot;</span></span><br><span class="line">      <span class="attr">support-x25519mlkem768:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line"><span class="attr">proxy-groups:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">VPS</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">select</span></span><br><span class="line">    <span class="attr">proxies:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">CloudCone-LAX</span></span><br><span class="line"></span><br><span class="line"><span class="attr">rules:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">MATCH,VPS</span></span><br></pre></td></tr></table></figure>
+
+<p>电脑端把 <code>.yaml</code> 文件拖进 Clash Verge Rev 的「订阅」页，点配置卡片启用。手机端在 Clash Mi 打开「我的配置」，点「＋」后选择「导入配置文件」。配置里有客户端 UUID，传给自己的设备时用私下的文件传输渠道。<a target="_blank" rel="noopener" href="https://www.clashverge.dev/guide/profile.html">Clash Verge Rev 导入说明</a> · <a target="_blank" rel="noopener" href="https://clashmi.app/guide/">Clash Mi 用户手册</a></p>
+<h3 id="Clash-里遇到的两次故障"><a href="#Clash-里遇到的两次故障" class="headerlink" title="Clash 里遇到的两次故障"></a>Clash 里遇到的两次故障</h3><ol>
+<li><strong>能导入 YAML，测速却失败。</strong> 从 Windows 可以连通 VPS 的 <code>443/TCP</code>，v2rayN 也能用。Clash 的 <code>sidecar_latest.log</code> 显示 <code>REALITY authentication failed</code>。我核对了当前入站的 SNI、Short ID、公钥、UUID 和 Flow，再用同一个 Mihomo 内核跑对照测试。原配置握手失败，加上 <code>support-x25519mlkem768: true</code> 后，请求 Google 的 <code>/generate_204</code> 返回 HTTP <code>204</code>。这条结论对应上面记录的 Xray 和 Mihomo 版本。<a target="_blank" rel="noopener" href="https://wiki.metacubex.one/en/config/proxies/tls/#reality-opts">Mihomo REALITY 参数</a></li>
+<li><strong>已经能上网，但「代理」页显示「未获取到代理信息」。</strong> 最初的规则是 <code>MATCH,CloudCone-LAX</code>，流量直接交给节点，规则模式的「代理」页却没有可展示的组。我加了 <code>VPS</code> 代理组，把规则改成 <code>MATCH,VPS</code>，节点就能在代理页展开并测速。<a target="_blank" rel="noopener" href="https://wiki.metacubex.one/en/config/proxy-groups/">Mihomo 代理组文档</a></li>
+</ol>
+<h2 id="六、IPv6-和端口检查"><a href="#六、IPv6-和端口检查" class="headerlink" title="六、IPv6 和端口检查"></a>六、IPv6 和端口检查</h2><h3 id="IPv6-备用节点"><a href="#IPv6-备用节点" class="headerlink" title="IPv6 备用节点"></a>IPv6 备用节点</h3><p>我最初想为 IPv6 再建一个 <code>443/TCP</code> 入站，3x-ui 提示原入站已占用这个端口。后来保持原入站，用下面的命令直接测 VPS 的 IPv6 地址。</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">Test-NetConnection</span> <span class="literal">-ComputerName</span> <span class="string">&#x27;YOUR_SERVER_IPV6&#x27;</span> <span class="literal">-Port</span> <span class="number">443</span></span><br></pre></td></tr></table></figure>
+
+<p>家里的 Wi-Fi 只有 <code>fe80::</code> 开头的链路本地地址，<code>route print -6</code> 也没有 IPv6 默认路由 <code>::/0</code>。切到手机热点后，电脑拿到公网 IPv6，同一条命令返回 <code>TcpTestSucceeded : True</code>。这台 VPS 因此可以复用原入站，客户端复制节点后只换服务器地址，就能单独测试 IPv6。日常仍用已验证的 IPv4 节点。</p>
+<h3 id="核对-VPS-的监听端口"><a href="#核对-VPS-的监听端口" class="headerlink" title="核对 VPS 的监听端口"></a>核对 VPS 的监听端口</h3><p>在 VPS 上运行 <code>ss -lntp</code>，再从本机测试公网访问。监听地址用来区分服务绑定在哪，外部 TCP 测试用来确认当前网络能不能连进去。</p>
+<table>
+<thead>
+<tr>
+<th>端口</th>
+<th>本次检查结果与用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>22/TCP</code></td>
+<td>公网可连，供 SSH 登录和建立面板隧道。</td>
+</tr>
+<tr>
+<td><code>443/TCP</code></td>
+<td>公网可连，供当前 VLESS + REALITY 入站使用。</td>
+</tr>
+<tr>
+<td><code>54321/TCP</code></td>
+<td>3x-ui 面板只监听 <code>127.0.0.1</code>。本机通过 SSH 转发到它，VPS 公网侧无需放行。</td>
+</tr>
+<tr>
+<td><code>18292/TCP</code></td>
+<td>搭建初期配置的节点端口，后来切换到 <code>443</code>。服务器已无监听，可以撤掉旧放行规则。</td>
+</tr>
+<tr>
+<td><code>2096/TCP</code></td>
+<td>3x-ui 独立的订阅服务端口，这次实测公网可连。仅使用本地 YAML 或单节点分享链接时，可以在面板里关闭订阅服务。</td>
+</tr>
+</tbody></table>
+<p><code>2222</code> 是我电脑上的隧道入口。VPS 侧的放行规则只涉及 VPS 自己的端口。核对规则时，也要看之前是否在云厂商控制台加过一层。<a target="_blank" rel="noopener" href="https://docs.sanaei.dev/docs/config/subscription/#enable-and-configure">3x-ui 订阅服务文档</a></p>
+<h2 id="七、验收结果"><a href="#七、验收结果" class="headerlink" title="七、验收结果"></a>七、验收结果</h2><ul>
+<li>用 SSH 隧道可以打开本地 <code>127.0.0.1:2222</code> 上的面板页面，外部 TCP 测试连不上 VPS 的 <code>54321</code>。</li>
+<li>v2rayN 的 IPv4 节点可以播放 YouTube，Mihomo 经同一入站请求 <code>/generate_204</code> 返回 <code>204</code>。</li>
+<li>Clash Verge Rev 的「代理」页可以展开 <code>VPS</code> 组，看到并单独测试 <code>CloudCone-LAX</code>。</li>
+<li>通过提供公网 IPv6 的手机热点，能连通 VPS 的 IPv6 <code>443/TCP</code>。</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://blog.bobocloud.top">Eiralan</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://blog.bobocloud.top/2026/11/07/VPS%E8%8A%82%E7%82%B9%E6%90%AD%E5%BB%BA%E4%B8%8E%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA-3X-UI%E4%B8%8EVLESS-Reality%E5%85%8D%E8%AF%81%E4%B9%A6%E6%96%B9%E6%A1%88/">https://blog.bobocloud.top/2026/11/07/VPS节点搭建与安全加固-3X-UI与VLESS-Reality免证书方案/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://blog.bobocloud.top" target="_blank">Eirialan</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Linux/">Linux</a><a class="post-meta__tags" href="/tags/VLESS/">VLESS</a><a class="post-meta__tags" href="/tags/SSH/">SSH</a><a class="post-meta__tags" href="/tags/REALITY/">REALITY</a></div><div class="post-share"><div class="social-share" data-image="/img/sunset.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/10/07/%E4%BB%8E%E9%9B%B6%E6%90%AD%E5%BB%BACI-CD%E6%B5%81%E6%B0%B4%E7%BA%BF-%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%88%B0Kubernetes%E8%87%AA%E5%8A%A8%E9%83%A8%E7%BD%B2/" title="搭一条 CI/CD 流水线：从代码提交到 Kubernetes 自动部署"><img class="cover" src="/img/sunset.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post" loading='lazy'><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">搭一条 CI/CD 流水线：从代码提交到 Kubernetes 自动部署</div></div><div class="info-2"><div class="info-item-1">用 Flask + 多阶段 Docker 构建 + GitHub Actions + GHCR + Kubernetes，搭一条从代码提交到自动部署的完整流水线，附踩过的六个坑。</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/04/25/%E4%BD%BF%E7%94%A8-Docker-%E9%83%A8%E7%BD%B2-Left-4-Dead-2-%E4%B8%93%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%99%A8/" title="使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）"><img class="cover" src="/img/sunset.jpg" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-25</div><div class="info-item-2">使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）</div></div><div class="info-2"><div class="info-item-1">在 Ubuntu 22.04 上用 Docker 部署带 SourceMod 插件的 L4D2 专用服务器，含管理员配置与 Tickrate 调优</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/pear.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="author-info-name">Eiralan</div><div class="author-info-description">记录技术学习与折腾日常</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">9</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Aurorapyc"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Aurorapyc" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:eiralan@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 Eiralan 的博客，这里记录技术学习与折腾日常。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E8%BF%99%E6%AC%A1%E6%90%AD%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-text">一、这次搭了什么</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E6%B5%8B%E7%8E%AF%E5%A2%83"><span class="toc-text">实测环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#REALITY-%E7%9A%84%E8%AF%81%E4%B9%A6%E6%98%AF%E6%80%8E%E4%B9%88%E5%9B%9E%E4%BA%8B"><span class="toc-text">REALITY 的证书是怎么回事</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%87%86%E5%A4%87%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="toc-text">二、准备服务器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A3%80%E6%9F%A5-BBR"><span class="toc-text">检查 BBR</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%AE%89%E8%A3%85%E9%9D%A2%E6%9D%BF%E5%B9%B6%E9%80%9A%E8%BF%87-SSH-%E8%AE%BF%E9%97%AE"><span class="toc-text">三、安装面板并通过 SSH 访问</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85%E6%97%B6%E6%80%8E%E4%B9%88%E9%80%89"><span class="toc-text">安装时怎么选</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%A8-Windows-%E4%B8%8A%E4%BF%9D%E5%AD%98-SSH-%E5%88%AB%E5%90%8D"><span class="toc-text">在 Windows 上保存 SSH 别名</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%B7%BB%E5%8A%A0-VLESS-%E5%85%A5%E7%AB%99%E5%92%8C%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="toc-text">四、添加 VLESS 入站和客户端</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%AF%BC%E5%85%A5%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="toc-text">五、导入客户端</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#v2rayN"><span class="toc-text">v2rayN</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Clash-Verge-Rev-%E5%92%8C-Clash-Mi"><span class="toc-text">Clash Verge Rev 和 Clash Mi</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Clash-%E9%87%8C%E9%81%87%E5%88%B0%E7%9A%84%E4%B8%A4%E6%AC%A1%E6%95%85%E9%9A%9C"><span class="toc-text">Clash 里遇到的两次故障</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81IPv6-%E5%92%8C%E7%AB%AF%E5%8F%A3%E6%A3%80%E6%9F%A5"><span class="toc-text">六、IPv6 和端口检查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#IPv6-%E5%A4%87%E7%94%A8%E8%8A%82%E7%82%B9"><span class="toc-text">IPv6 备用节点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%AF%B9-VPS-%E7%9A%84%E7%9B%91%E5%90%AC%E7%AB%AF%E5%8F%A3"><span class="toc-text">核对 VPS 的监听端口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E9%AA%8C%E6%94%B6%E7%BB%93%E6%9E%9C"><span class="toc-text">七、验收结果</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/VPS%E8%8A%82%E7%82%B9%E6%90%AD%E5%BB%BA%E4%B8%8E%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA-3X-UI%E4%B8%8EVLESS-Reality%E5%85%8D%E8%AF%81%E4%B9%A6%E6%96%B9%E6%A1%88/" title="VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战">VPS 节点搭建与安全加固：3X-UI + VLESS-Reality 免证书方案与 SSH 隧道实战</a><time datetime="2026-11-06T16:55:00.000Z" title="发表于 2026-11-07 00:55:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/07/%E4%BB%8E%E9%9B%B6%E6%90%AD%E5%BB%BACI-CD%E6%B5%81%E6%B0%B4%E7%BA%BF-%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%88%B0Kubernetes%E8%87%AA%E5%8A%A8%E9%83%A8%E7%BD%B2/" title="搭一条 CI/CD 流水线：从代码提交到 Kubernetes 自动部署">搭一条 CI/CD 流水线：从代码提交到 Kubernetes 自动部署</a><time datetime="2026-10-07T02:00:00.000Z" title="发表于 2026-10-07 10:00:00">2026-10-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/25/%E4%BD%BF%E7%94%A8-Docker-%E9%83%A8%E7%BD%B2-Left-4-Dead-2-%E4%B8%93%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%99%A8/" title="使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）">使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）</a><time datetime="2026-04-25T08:42:34.000Z" title="发表于 2026-04-25 16:42:34">2026-04-25</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Eiralan</span></div><div class="footer_custom_text">本博客文章除特别注明外，均采用 CC BY-NC-SA 4.0 许可协议。</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div></div></body></html>
