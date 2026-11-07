@@ -1,0 +1,228 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践 | Eirialan</title><meta name="author" content="Eiralan"><meta name="copyright" content="Eiralan"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="记录在网络受限节点上利用 SSH 建立本机 SOCKS5 代理、配置 dockerd 并验证镜像仓库访问的过程。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践">
+<meta property="og:url" content="https://blog.bobocloud.top/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/index.html">
+<meta property="og:site_name" content="Eirialan">
+<meta property="og:description" content="记录在网络受限节点上利用 SSH 建立本机 SOCKS5 代理、配置 dockerd 并验证镜像仓库访问的过程。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog.bobocloud.top/img/sunset.jpg">
+<meta property="article:published_time" content="2026-11-07T15:20:00.000Z">
+<meta property="article:modified_time" content="2026-11-07T16:03:39.241Z">
+<meta property="article:author" content="Eiralan">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="SOCKS5">
+<meta property="article:tag" content="SSH">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog.bobocloud.top/img/sunset.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践",
+  "url": "https://blog.bobocloud.top/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/",
+  "image": "https://blog.bobocloud.top/img/sunset.jpg",
+  "datePublished": "2026-11-07T15:20:00.000Z",
+  "dateModified": "2026-11-07T16:03:39.241Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Eiralan",
+      "url": "https://blog.bobocloud.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/site-icon.ico"><link rel="canonical" href="https://blog.bobocloud.top/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>.avatar-img img, i.fas, i.fab, i.far, .social-icon i { animation: none !important; transform: none !important; }</style><link rel="apple-touch-icon" sizes="180x180" href="/img/favicon.png"><link rel="preload" href="/img/lighthouse.jpg" as="image"><style>#footer { background-color: #3d3d3d !important; }</style><style>#page-header { background-color: #2d3a4b !important; }</style><style>@media (max-width: 768px){#page-header.full_page{background-image: url('/img/hero-mobile.jpg') !important;background-attachment: scroll !important;background-size: cover !important;background-position: center top !important;}}</style><meta name="generator" content="Hexo 8.1.1"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/pear.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/sunset.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Eirialan</span></a><a class="nav-page-title" href="/"><span class="site-name">基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-07T15:20:00.000Z" title="发表于 2026-11-07 23:20:00">2026-11-07</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-07T16:03:39.241Z" title="更新于 2026-11-08 00:03:39">2026-11-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BF%90%E7%BB%B4%E5%AE%9E%E8%B7%B5/">运维实践</a></span></div><div class="meta-secondline"></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>这次让受限网络节点 <code>node-a</code> 上的 Docker 通过一台可连通外网的远端服务器访问镜像仓库。本地的 Docker 命令行操作照常使用，配置改在后台守护进程 <code>dockerd</code> 上。这个办法解决的是 <code>docker pull</code> 访问镜像仓库网络超时的问题，已经启动的容器不会自动使用这个代理。文中的主机名、公网 IP 和镜像源已替换为示例值。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">本地节点的 dockerd</span><br><span class="line">    → 本机 SOCKS5 代理 127.0.0.1:1080</span><br><span class="line">    → SSH 动态隧道</span><br><span class="line">    → 远端服务器</span><br><span class="line">    → Docker Hub 或配置的镜像仓库</span><br></pre></td></tr></table></figure>
+
+<p>如果平时用 <code>ssh -N remote-panel</code> 映射管理面板，那个隧道由客户端发起。Docker 用的隧道则必须由本地服务器发起，这样 <code>dockerd</code> 才能连到本地的 <code>127.0.0.1:1080</code>。</p>
+<h2 id="1-在本地节点生成专用-SSH-密钥"><a href="#1-在本地节点生成专用-SSH-密钥" class="headerlink" title="1. 在本地节点生成专用 SSH 密钥"></a>1. 在本地节点生成专用 SSH 密钥</h2><p>在 <code>node-a</code> 上用普通用户账号执行。若已有该密钥对可跳过生成，直接查看公钥。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t ed25519 -f ~/.ssh/docker_proxy -C docker-proxy-key</span><br><span class="line"><span class="built_in">cat</span> ~/.ssh/docker_proxy.pub</span><br></pre></td></tr></table></figure>
+
+<p>复制 <code>cat</code> 输出的整行 <code>ssh-ed25519 ...</code>。<code>.pub</code> 文件是公钥，添加到远端服务器；对应的私钥 <code>~/.ssh/docker_proxy</code> 留在本地服务器。</p>
+<h2 id="2-在远端服务器授权这把公钥并收敛权限"><a href="#2-在远端服务器授权这把公钥并收敛权限" class="headerlink" title="2. 在远端服务器授权这把公钥并收敛权限"></a>2. 在远端服务器授权这把公钥并收敛权限</h2><p>登录远端服务器：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh -i ~/.ssh/id_ed25519 root@198.51.100.20</span><br></pre></td></tr></table></figure>
+
+<p>登录后编辑远端服务器的 <code>/root/.ssh/authorized_keys</code>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi /root/.ssh/authorized_keys</span><br></pre></td></tr></table></figure>
+
+<p>保留已有内容，另起一行，先写限制选项，再接上从本地节点复制的整行公钥。下面的 <code>AAAA...</code> 只是占位符：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">restrict,port-forwarding,command=&quot;/bin/false&quot; ssh-ed25519 AAAA... docker-proxy-key</span><br></pre></td></tr></table></figure>
+
+<p>这把密钥仅允许建立端口转发，<strong>不能用来打开远程交互式 Shell</strong>。限制只作用于这条公钥记录，遵循最小权限原则。<a target="_blank" rel="noopener" href="https://man.openbsd.org/sshd.8#AUTHORIZED_KEYS_FILE_FORMAT">OpenSSH 授权密钥说明</a></p>
+<h2 id="3-在本地节点建立-SOCKS5-动态隧道"><a href="#3-在本地节点建立-SOCKS5-动态隧道" class="headerlink" title="3. 在本地节点建立 SOCKS5 动态隧道"></a>3. 在本地节点建立 SOCKS5 动态隧道</h2><p>回到本地节点，运行下面的命令。把 <code>root@198.51.100.20</code> 换成远端服务器的 SSH 用户和地址；<code>127.0.0.1:1080</code> 是本地监听地址，保持原样。SSH 隧道和 <code>dockerd</code> 都运行在本机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ssh -fN -i ~/.ssh/docker_proxy -o IdentitiesOnly=<span class="built_in">yes</span> \</span><br><span class="line">  -o ExitOnForwardFailure=<span class="built_in">yes</span> -D 127.0.0.1:1080 root@198.51.100.20</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>-D 127.0.0.1:1080</code> 在本地开一个 SOCKS5 动态转发监听。应用把目标地址交给它，SSH 再从远端服务器连接目标。</li>
+<li><code>-N</code> 只建立转发不执行远程命令，<code>-f</code> 在认证完成后转入后台运行。</li>
+<li><code>ExitOnForwardFailure=yes</code> 让 SSH 在端口冲突或无法建立本地监听时报错退出。</li>
+</ul>
+<p>先检查端口监听，再通过该代理测试访问 Docker Hub 的 Registry 接口：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ss -lntp <span class="string">&#x27;( sport = :1080 )&#x27;</span></span><br><span class="line"></span><br><span class="line">curl --proxy socks5h://127.0.0.1:1080 --max-time 15 \</span><br><span class="line">  -sS -o /dev/null -w <span class="string">&#x27;%&#123;http_code&#125;\n&#x27;</span> \</span><br><span class="line">  https://registry-1.docker.io/v2/</span><br></pre></td></tr></table></figure>
+
+<p>本次返回 <code>401</code>。这是符合预期的结果：请求已经通过隧道正常连通 Docker Hub，Registry 正在请求认证响应，后续 <code>docker pull</code> 会自动完成认证。</p>
+<h2 id="4-在本地配置-Docker-守护进程"><a href="#4-在本地配置-Docker-守护进程" class="headerlink" title="4. 在本地配置 Docker 守护进程"></a>4. 在本地配置 Docker 守护进程</h2><p>下面适用于 Linux 上以 systemd 管理的 Docker Engine 23.0 或更新版本。先用 <code>sudo docker version</code> 确认 <strong>Server</strong> 版本。<code>docker pull</code> 的联网操作由守护进程发起，所以代理写在 <code>/etc/docker/daemon.json</code>。<a target="_blank" rel="noopener" href="https://docs.docker.com/engine/daemon/proxy/">Docker 守护进程代理文档</a> · <a target="_blank" rel="noopener" href="https://docs.docker.com/reference/cli/dockerd/#proxy-configuration">dockerd 配置参考</a></p>
+<p>编辑 <code>/etc/docker/daemon.json</code>，保留已有字段。如果已有 <code>proxies</code>，在里面更新对应项。下面的镜像源域名是占位符，复现时保留自己的实际配置；若无需镜像源则不用配置该字段。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;registry-mirrors&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;https://mirror.example.com&quot;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;proxies&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;http-proxy&quot;</span><span class="punctuation">:</span> <span class="string">&quot;socks5://127.0.0.1:1080&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;https-proxy&quot;</span><span class="punctuation">:</span> <span class="string">&quot;socks5://127.0.0.1:1080&quot;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>在方便重启 Docker 的时候执行。只有配置校验通过，下面的命令才会重启服务并测试拉取：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> dockerd --validate --config-file=/etc/docker/daemon.json &amp;&amp;</span><br><span class="line"><span class="built_in">sudo</span> systemctl restart docker &amp;&amp;</span><br><span class="line"><span class="built_in">sudo</span> docker pull hello-world</span><br></pre></td></tr></table></figure>
+
+<p>保留 <code>registry-mirrors</code> 时，<code>docker pull</code> 成功可能走的是镜像源。要单独验证 Docker 直接访问官方仓库，可以临时移除镜像源配置，校验并重启 Docker 后再拉取。要恢复原来的拉取方式，只需移除新增的代理配置，校验并重启服务即可。</p>
+<h2 id="5-这次遇到的报错与排查"><a href="#5-这次遇到的报错与排查" class="headerlink" title="5. 这次遇到的报错与排查"></a>5. 这次遇到的报错与排查</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>怎么判断和处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Connection refused</code>，<code>curl</code> 显示 <code>000</code></td>
+<td>本地连不上 <code>127.0.0.1:1080</code>。先用 <code>ss</code> 检查 SOCKS5 代理进程是否存活。</td>
+</tr>
+<tr>
+<td><code>Permission denied</code> 后出现 <code>root@... password:</code></td>
+<td>本地已连上远端 SSH，但公钥认证没通过。检查公钥是否加入远端的 <code>/root/.ssh/authorized_keys</code>，以及 <code>-i</code> 是否指向本地正确的私钥。</td>
+</tr>
+<tr>
+<td><code>Address already in use</code></td>
+<td>本地 <code>1080</code> 端口已被占用。用 <code>ss</code> 查到占用者 PID，用 <code>ps -ww -p &lt;PID&gt; -o args=</code> 查看命令，确认目标无误后可直接复用原隧道。</td>
+</tr>
+<tr>
+<td><code>401 Unauthorized</code></td>
+<td>Docker Hub 的 Registry 已经正常响应。接着用 <code>docker pull</code> 验证完整镜像拉取。</td>
+</tr>
+</tbody></table>
+<p>当前隧道是用 <code>ssh -fN</code> 启动的。本地主机重启或网络重连导致隧道断开后，重新执行命令拉起 <code>1080</code> 监听即可，Docker 的代理设置会持久保留在 <code>daemon.json</code> 中。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://blog.bobocloud.top">Eiralan</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://blog.bobocloud.top/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/">https://blog.bobocloud.top/2026/11/07/基于-SSH-SOCKS5-隧道的-Docker-镜像拉取代理实践/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://blog.bobocloud.top" target="_blank">Eirialan</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Docker/">Docker</a><a class="post-meta__tags" href="/tags/Linux/">Linux</a><a class="post-meta__tags" href="/tags/SSH/">SSH</a><a class="post-meta__tags" href="/tags/SOCKS5/">SOCKS5</a></div><div class="post-share"><div class="social-share" data-image="/img/sunset.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms"><img class="cover" src="/img/sunset.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post" loading='lazy'><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</div></div><div class="info-2"><div class="info-item-1">记录 Rocky Linux 9 上部署 DERP、用 Docker 签证书、排查客户端被拒绝和验证回家 SSH 的过程。</div></div></div></a><a class="pagination-related" href="/2026/11/07/3x-ui%E4%B8%8EVLESS-REALITY%E6%90%AD%E5%BB%BA%E5%AE%9E%E5%BD%95-%E7%94%A8SSH%E9%9A%A7%E9%81%93%E5%AE%89%E5%85%A8%E7%AE%A1%E7%90%86%E9%9D%A2%E6%9D%BF/" title="3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板"><img class="cover" src="/img/sunset.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post" loading='lazy'><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板</div></div><div class="info-2"><div class="info-item-1">记录用 3x-ui 搭建 VLESS + REALITY 节点的过程，包括利用 SSH 隧道保护管理面板、端口检查和客户端连接排障。</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/07/3x-ui%E4%B8%8EVLESS-REALITY%E6%90%AD%E5%BB%BA%E5%AE%9E%E5%BD%95-%E7%94%A8SSH%E9%9A%A7%E9%81%93%E5%AE%89%E5%85%A8%E7%AE%A1%E7%90%86%E9%9D%A2%E6%9D%BF/" title="3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板"><img class="cover" src="/img/sunset.jpg" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-07</div><div class="info-item-2">3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板</div></div><div class="info-2"><div class="info-item-1">记录用 3x-ui 搭建 VLESS + REALITY 节点的过程，包括利用 SSH 隧道保护管理面板、端口检查和客户端连接排障。</div></div></div></a><a class="pagination-related" href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms"><img class="cover" src="/img/sunset.jpg" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-07</div><div class="info-item-2">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</div></div><div class="info-2"><div class="info-item-1">记录 Rocky Linux 9 上部署 DERP、用 Docker 签证书、排查客户端被拒绝和验证回家 SSH 的过程。</div></div></div></a><a class="pagination-related" href="/2026/04/25/%E4%BD%BF%E7%94%A8-Docker-%E9%83%A8%E7%BD%B2-Left-4-Dead-2-%E4%B8%93%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%99%A8/" title="使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）"><img class="cover" src="/img/sunset.jpg" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-25</div><div class="info-item-2">使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）</div></div><div class="info-2"><div class="info-item-1">在 Ubuntu 22.04 上用 Docker 部署带 SourceMod 插件的 L4D2 专用服务器，含管理员配置与 Tickrate 调优</div></div></div></a><a class="pagination-related" href="/2026/10/07/%E4%BB%8E%E9%9B%B6%E6%90%AD%E5%BB%BACI-CD%E6%B5%81%E6%B0%B4%E7%BA%BF-%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%88%B0Kubernetes%E8%87%AA%E5%8A%A8%E9%83%A8%E7%BD%B2/" title="搭一条 CI&#x2F;CD 流水线：从代码提交到 Kubernetes 自动部署"><img class="cover" src="/img/sunset.jpg" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-07</div><div class="info-item-2">搭一条 CI&#x2F;CD 流水线：从代码提交到 Kubernetes 自动部署</div></div><div class="info-2"><div class="info-item-1">用 Flask + 多阶段 Docker 构建 + GitHub Actions + GHCR + Kubernetes，搭一条从代码提交到自动部署的完整流水线，附踩过的六个坑。</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/pear.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="author-info-name">Eiralan</div><div class="author-info-description">记录技术学习与折腾日常</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Aurorapyc"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Aurorapyc" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:eiralan@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 Eiralan 的博客，这里记录技术学习与折腾日常。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%9C%A8%E6%9C%AC%E5%9C%B0%E8%8A%82%E7%82%B9%E7%94%9F%E6%88%90%E4%B8%93%E7%94%A8-SSH-%E5%AF%86%E9%92%A5"><span class="toc-text">1. 在本地节点生成专用 SSH 密钥</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%9C%A8%E8%BF%9C%E7%AB%AF%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%8E%88%E6%9D%83%E8%BF%99%E6%8A%8A%E5%85%AC%E9%92%A5%E5%B9%B6%E6%94%B6%E6%95%9B%E6%9D%83%E9%99%90"><span class="toc-text">2. 在远端服务器授权这把公钥并收敛权限</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%9C%A8%E6%9C%AC%E5%9C%B0%E8%8A%82%E7%82%B9%E5%BB%BA%E7%AB%8B-SOCKS5-%E5%8A%A8%E6%80%81%E9%9A%A7%E9%81%93"><span class="toc-text">3. 在本地节点建立 SOCKS5 动态隧道</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%9C%A8%E6%9C%AC%E5%9C%B0%E9%85%8D%E7%BD%AE-Docker-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B"><span class="toc-text">4. 在本地配置 Docker 守护进程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E8%BF%99%E6%AC%A1%E9%81%87%E5%88%B0%E7%9A%84%E6%8A%A5%E9%94%99%E4%B8%8E%E6%8E%92%E6%9F%A5"><span class="toc-text">5. 这次遇到的报错与排查</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</a><time datetime="2026-11-07T15:30:00.000Z" title="发表于 2026-11-07 23:30:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/" title="基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践">基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践</a><time datetime="2026-11-07T15:20:00.000Z" title="发表于 2026-11-07 23:20:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/3x-ui%E4%B8%8EVLESS-REALITY%E6%90%AD%E5%BB%BA%E5%AE%9E%E5%BD%95-%E7%94%A8SSH%E9%9A%A7%E9%81%93%E5%AE%89%E5%85%A8%E7%AE%A1%E7%90%86%E9%9D%A2%E6%9D%BF/" title="3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板">3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板</a><time datetime="2026-11-06T16:55:00.000Z" title="发表于 2026-11-07 00:55:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/07/%E4%BB%8E%E9%9B%B6%E6%90%AD%E5%BB%BACI-CD%E6%B5%81%E6%B0%B4%E7%BA%BF-%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%88%B0Kubernetes%E8%87%AA%E5%8A%A8%E9%83%A8%E7%BD%B2/" title="搭一条 CI/CD 流水线：从代码提交到 Kubernetes 自动部署">搭一条 CI/CD 流水线：从代码提交到 Kubernetes 自动部署</a><time datetime="2026-10-07T02:00:00.000Z" title="发表于 2026-10-07 10:00:00">2026-10-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/25/%E4%BD%BF%E7%94%A8-Docker-%E9%83%A8%E7%BD%B2-Left-4-Dead-2-%E4%B8%93%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%99%A8/" title="使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）">使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）</a><time datetime="2026-04-25T08:42:34.000Z" title="发表于 2026-04-25 16:42:34">2026-04-25</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Eiralan</span></div><div class="footer_custom_text">本博客文章除特别注明外，均采用 CC BY-NC-SA 4.0 许可协议。</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div></div></body></html>
