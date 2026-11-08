@@ -361,7 +361,7 @@
 
 /* 右侧菜单栏：胶囊悬浮交互 */
 #nav .menus_items {
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center !important;
   gap: 6px !important;
 }
