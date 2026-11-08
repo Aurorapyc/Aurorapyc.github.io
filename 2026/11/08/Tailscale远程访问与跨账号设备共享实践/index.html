@@ -1,0 +1,329 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南 | Eirialan</title><meta name="author" content="Eiralan"><meta name="copyright" content="Eiralan"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="记录家庭 PVE 虚拟化环境结合 Tailscale 的异地组网、IPv6 直连调优、跨账号单机共享访问控制以及自建 DERP 在跨 Tailnet 场景下的排障实录。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南">
+<meta property="og:url" content="https://blog.bobocloud.top/2026/11/08/Tailscale%E8%BF%9C%E7%A8%8B%E8%AE%BF%E9%97%AE%E4%B8%8E%E8%B7%A8%E8%B4%A6%E5%8F%B7%E8%AE%BE%E5%A4%87%E5%85%B1%E4%BA%AB%E5%AE%9E%E8%B7%B5/index.html">
+<meta property="og:site_name" content="Eirialan">
+<meta property="og:description" content="记录家庭 PVE 虚拟化环境结合 Tailscale 的异地组网、IPv6 直连调优、跨账号单机共享访问控制以及自建 DERP 在跨 Tailnet 场景下的排障实录。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog.bobocloud.top/img/sunset.jpg">
+<meta property="article:published_time" content="2026-11-08T12:00:00.000Z">
+<meta property="article:modified_time" content="2026-11-08T13:21:45.682Z">
+<meta property="article:author" content="Eiralan">
+<meta property="article:tag" content="Homelab">
+<meta property="article:tag" content="IPv6">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="Tailscale">
+<meta property="article:tag" content="网络">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog.bobocloud.top/img/sunset.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南",
+  "url": "https://blog.bobocloud.top/2026/11/08/Tailscale%E8%BF%9C%E7%A8%8B%E8%AE%BF%E9%97%AE%E4%B8%8E%E8%B7%A8%E8%B4%A6%E5%8F%B7%E8%AE%BE%E5%A4%87%E5%85%B1%E4%BA%AB%E5%AE%9E%E8%B7%B5/",
+  "image": "https://blog.bobocloud.top/img/sunset.jpg",
+  "datePublished": "2026-11-08T12:00:00.000Z",
+  "dateModified": "2026-11-08T13:21:45.682Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Eiralan",
+      "url": "https://blog.bobocloud.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/site-icon.ico"><link rel="canonical" href="https://blog.bobocloud.top/2026/11/08/Tailscale%E8%BF%9C%E7%A8%8B%E8%AE%BF%E9%97%AE%E4%B8%8E%E8%B7%A8%E8%B4%A6%E5%8F%B7%E8%AE%BE%E5%A4%87%E5%85%B1%E4%BA%AB%E5%AE%9E%E8%B7%B5/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>.avatar-img img, i.fas, i.fab, i.far, .social-icon i { animation: none !important; transform: none !important; }</style><link rel="apple-touch-icon" sizes="180x180" href="/img/favicon.png"><link rel="preload" href="/img/lighthouse.jpg" as="image"><style>#footer { background-color: #3d3d3d !important; }</style><style>#page-header { background-color: #2d3a4b !important; }</style><style>@media (max-width: 768px){#page-header.full_page{background-image: url('/img/hero-mobile.jpg') !important;background-attachment: scroll !important;background-size: cover !important;background-position: center top !important;}}</style><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/site-bg.webp);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/pear.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">15</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="not-top-img fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Eirialan</span></a><a class="nav-page-title" href="/"><span class="site-name">Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-08T12:00:00.000Z" title="发表于 2026-11-08 20:00:00">2026-11-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-08T13:21:45.682Z" title="更新于 2026-11-08 21:21:45">2026-11-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BF%90%E7%BB%B4%E5%AE%9E%E8%B7%B5/">运维实践</a></span></div><div class="meta-secondline"></div></div></div><article class="container post-content" id="article-container"><h2 id="一、网络拓扑与场景背景"><a href="#一、网络拓扑与场景背景" class="headerlink" title="一、网络拓扑与场景背景"></a>一、网络拓扑与场景背景</h2><p>我在家里的 Proxmox VE（PVE）宿主机上部署了应用虚拟机（运行各类 Web 与容器化服务）。为了在外部（学校校园网、手机热点等）能够随时安全访问家里的内网服务，并支持把特定单台虚拟机共享给朋友或备用账号，我采用了基于 <strong>Tailscale + 自建阿里云 DERP 中继</strong> 的异地组网架构。</p>
+<p>文中的公网 IP、个人邮箱与私有域名已作脱敏替换，复现时请替换为你自己的实际参数。</p>
+<h3 id="参与节点清单"><a href="#参与节点清单" class="headerlink" title="参与节点清单"></a>参与节点清单</h3><table>
+<thead>
+<tr>
+<th>节点标识</th>
+<th>角色 &#x2F; 所属 Tailnet</th>
+<th>虚拟 IP &#x2F; 内网 IP</th>
+<th>说明与运行服务</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>vm-apps</code></strong></td>
+<td>共享目标虚拟机（主账号）</td>
+<td><code>100.113.124.120</code><br><code>192.168.20.110</code></td>
+<td>Rocky Linux 9，运行 SSH:22 与内网 Web 应用:5212 等服务</td>
+</tr>
+<tr>
+<td><strong><code>pve</code></strong></td>
+<td>虚拟化宿主机（主账号）</td>
+<td><code>100.95.252.103</code><br><code>192.168.20.108</code></td>
+<td>发布 <code>192.168.20.0/24</code> 子网路由，负责转发内网流量</td>
+</tr>
+<tr>
+<td><strong><code>bobo-ecs-01</code></strong></td>
+<td>自建国内中继（主账号）</td>
+<td>公网 <code>198.51.100.20</code><br><code>100.118.96.34</code></td>
+<td>阿里云 ECS，自建低延迟 DERP（TCP <code>12443</code>，UDP <code>3478</code>，Region ID <code>900</code>）</td>
+</tr>
+<tr>
+<td><strong><code>zql</code> (Windows)</strong></td>
+<td>外部访问客户端（测试时切至新账号）</td>
+<td><code>100.109.45.103</code><br>（主账号下为 <code>100.124.154.62</code>）</td>
+<td>外部笔记本，接入校园网 WLAN 或手机热点</td>
+</tr>
+</tbody></table>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">【手机热点 IPv6 直连路径】</span><br><span class="line">Windows (公网 IPv6) ──────── WireGuard UDP 直连 ────────→ PVE (公网 IPv6) ── 家里局域网 ──→ vm-apps</span><br><span class="line"></span><br><span class="line">【校园网中继转发路径】</span><br><span class="line">Windows (校园网) ─────── Tailscale 加密隧道 ───────→ 阿里云 ECS (DERP) ───────→ PVE ── 家里局域网 ──→ vm-apps</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、IPv4-请求走-IPv6-直连的封装流程"><a href="#二、IPv4-请求走-IPv6-直连的封装流程" class="headerlink" title="二、IPv4 请求走 IPv6 直连的封装流程"></a>二、IPv4 请求走 IPv6 直连的封装流程</h2><p>以在外部浏览器打开内网 Web 服务地址 <code>http://192.168.20.110:5212</code> 为例：</p>
+<ol>
+<li>浏览器发起目标为 <code>192.168.20.110:5212</code> 的 IPv4 TCP 请求，匹配 PVE 发布的 <code>192.168.20.0/24</code> 子网路由，由 Windows 交付 Tailscale 虚拟网卡。</li>
+<li>两端直连时，Windows Tailscale 将加密后的内层数据封装进发往 PVE 公网 IPv6 的 UDP 数据包中。</li>
+<li>PVE 接收并解密后，通过 <code>vmbr0</code> 局域网转发给虚拟机；响应数据按原路返回。</li>
+</ol>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">外层：公网 IPv6 + UDP       目的地址为 PVE 的公网 IPv6，UDP 端口 41641</span><br><span class="line">内层：私网 IPv4 + TCP       目的地址为内网服务的 192.168.20.110:5212</span><br></pre></td></tr></table></figure>
+
+<p><a target="_blank" rel="noopener" href="https://tailscale.com/docs/features/subnet-routers">Tailscale 子网路由说明</a> · <a target="_blank" rel="noopener" href="https://tailscale.com/docs/concepts/ipv6">Tailscale IPv6 说明</a></p>
+<hr>
+<h2 id="三、为什么手机热点能直连，校园网却走中继？"><a href="#三、为什么手机热点能直连，校园网却走中继？" class="headerlink" title="三、为什么手机热点能直连，校园网却走中继？"></a>三、为什么手机热点能直连，校园网却走中继？</h2><ul>
+<li><strong>手机热点</strong>。Windows 和 PVE 都有可用的公网 IPv6，两端建立了 UDP 直连。从 Windows 发起探测时，<code>via [240e:…]:41641</code> 显示的是 PVE 的公网端点。后续 16 次直连探测的中位数是 <code>45 ms</code>，其中 13 次在 <code>30–50 ms</code>，最高 <code>110 ms</code>。</li>
+<li><strong>校园网</strong>。Windows 的 <code>netcheck</code> 显示 <code>IPv6: no</code> 和 <code>MappingVariesByDestIP: true</code>，后者表示公网映射会随目的地变化。家里宽带处于运营商 CGNAT 后面，家里路由器的端口映射只覆盖家里这一层。这轮 IPv4 打洞没成功，Tailscale 自动走 <code>DERP(aliyun)</code>，探测约 <code>20 ms</code>。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/reference/device-connectivity">Tailscale 连接诊断</a></li>
+<li><strong>之前有一次 IPv4 直连</strong>，探测约 <code>6 ms</code>。后来 PVE 公布的公网 IP 和候选 UDP 端口都发生了变化。现有日志无法确定当时为什么打通，也无法定位后来是哪一层影响了打洞。 <a target="_blank" rel="noopener" href="https://tailscale.com/blog/how-nat-traversal-works">Tailscale NAT 打洞原理</a></li>
+</ul>
+<p><code>45 ms</code> 和 <code>20 ms</code> 分别来自手机热点和校园网。虽然热点直连绕过了 ECS，往返时间仍受接入链路和公网路由影响，现有测试无法确定额外延迟出在哪一段。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/reference/connection-types">Tailscale 连接类型</a></p>
+<hr>
+<h2 id="四、PVE-宿主机-IPv6-接收通告内核调优"><a href="#四、PVE-宿主机-IPv6-接收通告内核调优" class="headerlink" title="四、PVE 宿主机 IPv6 接收通告内核调优"></a>四、PVE 宿主机 IPv6 接收通告内核调优</h2><h3 id="内核参数配置"><a href="#内核参数配置" class="headerlink" title="内核参数配置"></a>内核参数配置</h3><p>PVE 的 <code>vmbr0</code> 原来是 <code>accept_ra=1</code>。当接口开启 IPv6 转发时，Linux 在此模式下会忽略路由器通告（RA）。改为 <code>accept_ra=2</code> 后，接口即使开启 IPv6 转发也能接收通告。本次 <code>autoconf</code> 已经是 <code>1</code>，收到前缀后即可自动配置地址。</p>
+<table>
+<thead>
+<tr>
+<th>参数项</th>
+<th>取值</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>net.ipv6.conf.vmbr0.accept_ra</code></td>
+<td><code>2</code></td>
+<td>即使系统开启了转发，仍强制接收路由器的 RA 通告</td>
+</tr>
+<tr>
+<td><code>net.ipv6.conf.vmbr0.autoconf</code></td>
+<td><code>1</code></td>
+<td>允许网卡根据接收到的 IPv6 前缀自动配置无状态公网地址（SLAAC）</td>
+</tr>
+</tbody></table>
+<p>在 PVE 终端执行测试与持久化配置：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 临时测试</span></span><br><span class="line">sysctl -w net.ipv6.conf.vmbr0.accept_ra=2</span><br><span class="line">ip -6 addr show dev vmbr0 scope global</span><br><span class="line">ip -6 route show default</span><br><span class="line">tailscale netcheck</span><br><span class="line"></span><br><span class="line"><span class="comment"># 写入持久化配置</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%s\n&#x27;</span> <span class="string">&#x27;net.ipv6.conf.vmbr0.accept_ra = 2&#x27;</span> \</span><br><span class="line">  &gt; /etc/sysctl.d/90-pve-vmbr0-ipv6-ra.conf</span><br><span class="line">sysctl -p /etc/sysctl.d/90-pve-vmbr0-ipv6-ra.conf</span><br></pre></td></tr></table></figure>
+
+<p>临时调整后，我已经测到 Windows 和 PVE 通过公网 IPv6 直连，也从 Windows 用内网地址打开了 Web 服务。重启后的配置加载还没验证。下次正常重启后运行 <code>sysctl net.ipv6.conf.vmbr0.accept_ra</code>，确认值仍为 <code>2</code>。 <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html">Linux 内核 accept_ra 说明</a> · <a target="_blank" rel="noopener" href="https://manpages.debian.org/trixie/systemd/sysctl.d.5.en.html">Debian 的 sysctl.d 说明</a></p>
+<hr>
+<h2 id="五、跨账号设备共享（Node-Sharing）与-Grants-授权"><a href="#五、跨账号设备共享（Node-Sharing）与-Grants-授权" class="headerlink" title="五、跨账号设备共享（Node Sharing）与 Grants 授权"></a>五、跨账号设备共享（Node Sharing）与 Grants 授权</h2><p>当把 <code>vm-apps</code> 单机共享给新账号（<code>guest@example.com</code>）时，需要注意以下边界规则：</p>
+<h3 id="1-单机共享不传递子网路由"><a href="#1-单机共享不传递子网路由" class="headerlink" title="1. 单机共享不传递子网路由"></a>1. 单机共享不传递子网路由</h3><p>Tailscale 设备共享（Share node）仅赋予接收方访问被共享单机本身虚拟 IP（<code>100.113.124.120</code>）的权限，<strong>PVE 发布的 <code>192.168.20.0/24</code> 子网路由不会随共享传递</strong>。新账号在 <code>tailscale status</code> 里找到共享设备后，可用它显示的 Tailscale IP 访问。本次是 <code>100.113.124.120</code>。如果启用了 MagicDNS，也可用设备的完整名称，例如 <code>vm-apps.tail000000.ts.net</code>，其中 Tailnet DNS 后缀需换成自己的。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/features/sharing">Tailscale 设备共享机制</a></p>
+<h3 id="2-Grants-访问策略设计"><a href="#2-Grants-访问策略设计" class="headerlink" title="2. Grants 访问策略设计"></a>2. Grants 访问策略设计</h3><p>共享可见、网络策略放行、系统 SSH 认证三者相互独立：</p>
+<ul>
+<li><code>&quot;src&quot;: [&quot;*&quot;]</code> 会覆盖有访问资格的共享用户；</li>
+<li>若想限制范围，<code>autogroup:shared</code> 可用来匹配所有共享进来的用户，指定邮箱则能把授权范围缩小到单个接收方；</li>
+<li>Grants 授权会累加。把下面的规则加入主 Tailnet 的 <code>grants</code> 数组时，还要检查原来的宽泛规则。只要旧规则仍允许该接收方访问其他端口，新增的 <code>tcp:22</code> 就不会收回那些权限。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/features/sharing#sharing-and-access-control-policies">Tailscale 共享访问策略</a></li>
+</ul>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;src&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;guest@example.com&quot;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;dst&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;100.113.124.120&quot;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;ip&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;tcp:22&quot;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>目标机若使用系统原生 OpenSSH，TCP <code>22</code> 连通后由 Linux <code>sshd</code> 验证凭据；若开启了 Tailscale SSH，则另需策略文件中的 <code>ssh</code> 规则放行。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/features/tailscale-ssh">Tailscale SSH 文档</a></p>
+<hr>
+<h2 id="六、自建-DERP-中继踩坑与恢复配置"><a href="#六、自建-DERP-中继踩坑与恢复配置" class="headerlink" title="六、自建 DERP 中继踩坑与恢复配置"></a>六、自建 DERP 中继踩坑与恢复配置</h2><p>新账号接受 <code>vm-apps</code> 的设备共享后，SSH 起初超时。调整两边的 DERP 配置并关闭 ECS 的本地客户端校验后，新账号用 <code>100.113.124.120</code> 成功登录 SSH。多个设置在同一轮调整，无法单独确认是哪项改动恢复了连接。</p>
+<ol>
+<li><strong>排查时同步了两边的 DERP 区域</strong>。主 Tailnet 配置了 Region <code>900</code>，<code>vm-apps</code> 的 <code>HomeDERP</code> 是 <code>900</code>，新账号所在的 Tailnet 最初没有这个区域。排查时把相同的 <code>derpMap</code> 加入两边。官方仍将跨 Tailnet 设备共享列为自建 DERP 的不支持项，这次恢复属于当前环境的实测记录。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/reference/derp-servers">Tailscale 自建 DERP 限制</a></li>
+<li><strong>域名 SNI 与纯 IP 探测差异</strong>：携带 <code>derp.example.com</code> 的 SNI 时，TLS 连接被重置。直接用公网 IP 发起的 HTTP 测试收到 <code>200</code>。现有记录无法确认重置来自哪一层，也无法确认是否与机房拦截有关。HTTP 响应和 DERP 会话应分别验证。 <a target="_blank" rel="noopener" href="https://www.alibabacloud.com/help/en/ecs/support/what-do-i-do-if-i-cannot-access-a-website-hosted-on-an-instance">阿里云 ECS 访问排查</a></li>
+<li><strong>开启客户端校验时中继拒绝新账号节点</strong>：ECS 的容器日志出现 <code>not authorized (not found in local tailscaled)</code>。开启 <code>DERP_VERIFY_CLIENTS</code> 时，<code>derper</code> 会用本机 <code>tailscaled</code> 检查客户端是否对其可见。排查期间临时关闭了这项校验（设为 <code>false</code>）。 <a target="_blank" rel="noopener" href="https://github.com/tailscale/tailscale/blob/main/cmd/derper/README.md">DERP 客户端校验说明</a></li>
+</ol>
+<p>上一篇 <a href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</a> 记录的是同一 Tailnet 内的常规部署，用域名证书并开启客户端校验。下面这组值用于记录这次跨账号排查时的配置。</p>
+<h3 id="恢复时使用的临时配置"><a href="#恢复时使用的临时配置" class="headerlink" title="恢复时使用的临时配置"></a>恢复时使用的临时配置</h3><table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>取值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>两个 Tailnet 的 <code>derpMap</code></td>
+<td>Region ID: <code>900</code>，Region Code: <code>aliyun</code>，Node: <code>900a</code></td>
+</tr>
+<tr>
+<td>节点定义</td>
+<td><code>HostName: &quot;198.51.100.20&quot;</code>, <code>DERPPort: 12443</code>, <code>STUNPort: 3478</code>, <code>InsecureForTests: true</code></td>
+</tr>
+<tr>
+<td>容器服务</td>
+<td><code>/opt/derper/docker-compose.yml</code>，镜像 <code>ghcr.io/yangchuansheng/derper:v1.102.3</code></td>
+</tr>
+<tr>
+<td>监听与端口</td>
+<td><code>DERP_ADDR=:12443</code>，<code>DERP_HTTP_PORT=-1</code>，<code>DERP_DOMAIN=derp.example.com</code></td>
+</tr>
+<tr>
+<td>准入参数</td>
+<td><code>DERP_VERIFY_CLIENTS=false</code></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>安全警示</strong>：<code>InsecureForTests: true</code> 会跳过 DERP 服务端证书校验。关闭 <code>DERP_VERIFY_CLIENTS</code> 会移除基于本机 <code>tailscaled</code> 的准入检查。如果端口对公网开放且没有其他准入限制，第三方客户端可能使用中继并占用 ECS 带宽。长期运行应使用可验证的证书并限制中继准入。需要跨 Tailnet 设备共享时，优先验证 Tailscale 官方 DERP 路径。 <a target="_blank" rel="noopener" href="https://github.com/tailscale/tailscale/blob/main/derp/derphttp/derphttp_client.go">TLS 校验源码</a> · <a target="_blank" rel="noopener" href="https://github.com/tailscale/tailscale/blob/main/cmd/derper/README.md">DERP 客户端校验</a></p>
+</blockquote>
+<hr>
+<h2 id="七、文件传输路径与带宽"><a href="#七、文件传输路径与带宽" class="headerlink" title="七、文件传输路径与带宽"></a>七、文件传输路径与带宽</h2><table>
+<thead>
+<tr>
+<th>访问方式</th>
+<th>如何判断传输路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>http://192.168.20.110:5212</code></td>
+<td>通过主账号的子网路由访问内网 Web 服务。查看 PVE 的连接状态，<code>direct</code> 表示绕过 ECS，<code>relay &quot;aliyun&quot;</code> 表示经 ECS 中继。</td>
+</tr>
+<tr>
+<td><code>http://100.113.124.120:5212</code></td>
+<td>访问 <code>vm-apps</code> 自己的 Tailscale 地址。查看 <code>vm-apps</code> 的连接状态。</td>
+</tr>
+<tr>
+<td><code>https://cloud.example.com</code></td>
+<td>公网域名示例。如果通过 Cloudflare Tunnel 发布，应查看 Tunnel 的公开路由、连接器位置和回源地址。本文尚未核对实际回源路径。 <a target="_blank" rel="noopener" href="https://developers.cloudflare.com/tunnel/concepts/routing/">Cloudflare Tunnel 路由</a></td>
+</tr>
+</tbody></table>
+<p>从外面<strong>上传到家</strong>，主要看外出端的上行和家里宽带的下行。从外面<strong>下载家里的文件</strong>，主要看家里的上行和外出端的下行。直连时，两端带宽和公网路径都会影响实际速度。中继时，ECS 的出网带宽和中继可用吞吐也可能成为瓶颈。</p>
+<p>如果上传界面显示的是 <code>1.2 MB/s</code>，换算约为 <code>9.6 Mbps</code>。那次上传的瓶颈还没有定位。要判断是否经过 ECS，可以在传输期间查看对应节点的 <code>tailscale status</code>。</p>
+<hr>
+<h2 id="八、日常诊断与连通性验证速查"><a href="#八、日常诊断与连通性验证速查" class="headerlink" title="八、日常诊断与连通性验证速查"></a>八、日常诊断与连通性验证速查</h2><h3 id="1-主账号验证-PVE-子网路由"><a href="#1-主账号验证-PVE-子网路由" class="headerlink" title="1. 主账号验证 PVE 子网路由"></a>1. 主账号验证 PVE 子网路由</h3><p>Windows 保持主账号配置。先看 Windows 到 PVE 的路径，再用内网 Web 服务的地址验证子网转发：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">tailscale status</span><br><span class="line">tailscale netcheck</span><br><span class="line">tailscale ping <span class="literal">--c</span>=<span class="number">10</span> <span class="literal">--until-direct</span>=false <span class="number">100.95</span>.<span class="number">252.103</span></span><br><span class="line">curl.exe <span class="literal">--noproxy</span> <span class="string">&quot;*&quot;</span> <span class="literal">--connect-timeout</span> <span class="number">5</span> <span class="literal">-sS</span> <span class="literal">-o</span> NUL <span class="literal">-w</span> <span class="string">&quot;HTTP %&#123;http_code&#125;\n&quot;</span> http://<span class="number">192.168</span>.<span class="number">20.110</span>:<span class="number">5212</span>/</span><br></pre></td></tr></table></figure>
+
+<p><code>via [240e:…]:41641</code> 是到 PVE 的公网 IPv6 直连。<code>via DERP(aliyun)</code> 表示经过阿里云中继。这次用手机热点实测，PVE 显示 IPv6 直连，内网 Web 服务返回 <code>HTTP 200</code>，同时 PVE 的 Tailscale 收发计数增加。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/reference/connection-types">Tailscale 连接类型</a></p>
+<h3 id="2-新账号验证共享虚拟机-SSH"><a href="#2-新账号验证共享虚拟机-SSH" class="headerlink" title="2. 新账号验证共享虚拟机 SSH"></a>2. 新账号验证共享虚拟机 SSH</h3><p>Windows 切到新账号配置，目标改为共享的 <code>vm-apps</code>：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">tailscale status</span><br><span class="line">tailscale debug derp aliyun</span><br><span class="line">tailscale ping <span class="literal">--c</span>=<span class="number">5</span> <span class="number">100.113</span>.<span class="number">124.120</span></span><br><span class="line"><span class="built_in">Test-NetConnection</span> <span class="number">100.113</span>.<span class="number">124.120</span> <span class="literal">-Port</span> <span class="number">22</span></span><br><span class="line">ssh root@<span class="number">100.113</span>.<span class="number">124.120</span></span><br></pre></td></tr></table></figure>
+
+<p><code>tailscale debug derp aliyun</code> 验证客户端能否与自建 DERP 建立连接，<code>tailscale ping</code> 显示本轮到 <code>vm-apps</code> 的实际路径。<code>TcpTestSucceeded : True</code> 表示 TCP <code>22</code> 可达，最后以成功进入 SSH 会话为准。 <a target="_blank" rel="noopener" href="https://tailscale.com/docs/reference/troubleshooting/network-configuration/tcp-connection-two-devices">Tailscale TCP 连通性排查</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://blog.bobocloud.top">Eiralan</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://blog.bobocloud.top/2026/11/08/Tailscale%E8%BF%9C%E7%A8%8B%E8%AE%BF%E9%97%AE%E4%B8%8E%E8%B7%A8%E8%B4%A6%E5%8F%B7%E8%AE%BE%E5%A4%87%E5%85%B1%E4%BA%AB%E5%AE%9E%E8%B7%B5/">https://blog.bobocloud.top/2026/11/08/Tailscale远程访问与跨账号设备共享实践/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://blog.bobocloud.top" target="_blank">Eirialan</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Linux/">Linux</a><a class="post-meta__tags" href="/tags/Tailscale/">Tailscale</a><a class="post-meta__tags" href="/tags/IPv6/">IPv6</a><a class="post-meta__tags" href="/tags/%E7%BD%91%E7%BB%9C/">网络</a><a class="post-meta__tags" href="/tags/Homelab/">Homelab</a></div><div class="post-share"><div class="social-share" data-image="/img/sunset.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms"><img class="cover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/sunset.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</div></div><div class="info-2"><div class="info-item-1">记录 Rocky Linux 9 上部署 DERP、用 Docker 签证书、排查客户端被拒绝和验证回家 SSH 的过程。</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms"><img class="cover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/sunset.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-07</div><div class="info-item-2">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</div></div><div class="info-2"><div class="info-item-1">记录 Rocky Linux 9 上部署 DERP、用 Docker 签证书、排查客户端被拒绝和验证回家 SSH 的过程。</div></div></div></a><a class="pagination-related" href="/2026/11/07/3x-ui%E4%B8%8EVLESS-REALITY%E6%90%AD%E5%BB%BA%E5%AE%9E%E5%BD%95-%E7%94%A8SSH%E9%9A%A7%E9%81%93%E5%AE%89%E5%85%A8%E7%AE%A1%E7%90%86%E9%9D%A2%E6%9D%BF/" title="3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板"><img class="cover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/sunset.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-07</div><div class="info-item-2">3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板</div></div><div class="info-2"><div class="info-item-1">记录用 3x-ui 搭建 VLESS + REALITY 节点的过程，包括利用 SSH 隧道保护管理面板、端口检查和客户端连接排障。</div></div></div></a><a class="pagination-related" href="/2026/04/25/%E4%BD%BF%E7%94%A8-Docker-%E9%83%A8%E7%BD%B2-Left-4-Dead-2-%E4%B8%93%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%99%A8/" title="使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）"><img class="cover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/sunset.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-25</div><div class="info-item-2">使用 Docker 部署 Left 4 Dead 2 专用服务器（含 SourceMod 与调优）</div></div><div class="info-2"><div class="info-item-1">在 Ubuntu 22.04 上用 Docker 部署带 SourceMod 插件的 L4D2 专用服务器，含管理员配置与 Tickrate 调优</div></div></div></a><a class="pagination-related" href="/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/" title="基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践"><img class="cover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/sunset.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-07</div><div class="info-item-2">基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践</div></div><div class="info-2"><div class="info-item-1">记录在网络受限节点上利用 SSH 建立本机 SOCKS5 代理、配置 dockerd 并验证镜像仓库访问的过程。</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/pear.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Eiralan</div><div class="author-info-description">记录技术学习与折腾日常</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">15</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Aurorapyc"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Aurorapyc" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:eiralan@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 Eiralan 的博客，这里记录技术学习与折腾日常。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%BD%91%E7%BB%9C%E6%8B%93%E6%89%91%E4%B8%8E%E5%9C%BA%E6%99%AF%E8%83%8C%E6%99%AF"><span class="toc-text">一、网络拓扑与场景背景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E4%B8%8E%E8%8A%82%E7%82%B9%E6%B8%85%E5%8D%95"><span class="toc-text">参与节点清单</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81IPv4-%E8%AF%B7%E6%B1%82%E8%B5%B0-IPv6-%E7%9B%B4%E8%BF%9E%E7%9A%84%E5%B0%81%E8%A3%85%E6%B5%81%E7%A8%8B"><span class="toc-text">二、IPv4 请求走 IPv6 直连的封装流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E4%B8%BA%E4%BB%80%E4%B9%88%E6%89%8B%E6%9C%BA%E7%83%AD%E7%82%B9%E8%83%BD%E7%9B%B4%E8%BF%9E%EF%BC%8C%E6%A0%A1%E5%9B%AD%E7%BD%91%E5%8D%B4%E8%B5%B0%E4%B8%AD%E7%BB%A7%EF%BC%9F"><span class="toc-text">三、为什么手机热点能直连，校园网却走中继？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81PVE-%E5%AE%BF%E4%B8%BB%E6%9C%BA-IPv6-%E6%8E%A5%E6%94%B6%E9%80%9A%E5%91%8A%E5%86%85%E6%A0%B8%E8%B0%83%E4%BC%98"><span class="toc-text">四、PVE 宿主机 IPv6 接收通告内核调优</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E6%A0%B8%E5%8F%82%E6%95%B0%E9%85%8D%E7%BD%AE"><span class="toc-text">内核参数配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%B7%A8%E8%B4%A6%E5%8F%B7%E8%AE%BE%E5%A4%87%E5%85%B1%E4%BA%AB%EF%BC%88Node-Sharing%EF%BC%89%E4%B8%8E-Grants-%E6%8E%88%E6%9D%83"><span class="toc-text">五、跨账号设备共享（Node Sharing）与 Grants 授权</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%8D%95%E6%9C%BA%E5%85%B1%E4%BA%AB%E4%B8%8D%E4%BC%A0%E9%80%92%E5%AD%90%E7%BD%91%E8%B7%AF%E7%94%B1"><span class="toc-text">1. 单机共享不传递子网路由</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-Grants-%E8%AE%BF%E9%97%AE%E7%AD%96%E7%95%A5%E8%AE%BE%E8%AE%A1"><span class="toc-text">2. Grants 访问策略设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E8%87%AA%E5%BB%BA-DERP-%E4%B8%AD%E7%BB%A7%E8%B8%A9%E5%9D%91%E4%B8%8E%E6%81%A2%E5%A4%8D%E9%85%8D%E7%BD%AE"><span class="toc-text">六、自建 DERP 中继踩坑与恢复配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%81%A2%E5%A4%8D%E6%97%B6%E4%BD%BF%E7%94%A8%E7%9A%84%E4%B8%B4%E6%97%B6%E9%85%8D%E7%BD%AE"><span class="toc-text">恢复时使用的临时配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%96%87%E4%BB%B6%E4%BC%A0%E8%BE%93%E8%B7%AF%E5%BE%84%E4%B8%8E%E5%B8%A6%E5%AE%BD"><span class="toc-text">七、文件传输路径与带宽</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%97%A5%E5%B8%B8%E8%AF%8A%E6%96%AD%E4%B8%8E%E8%BF%9E%E9%80%9A%E6%80%A7%E9%AA%8C%E8%AF%81%E9%80%9F%E6%9F%A5"><span class="toc-text">八、日常诊断与连通性验证速查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%B8%BB%E8%B4%A6%E5%8F%B7%E9%AA%8C%E8%AF%81-PVE-%E5%AD%90%E7%BD%91%E8%B7%AF%E7%94%B1"><span class="toc-text">1. 主账号验证 PVE 子网路由</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%96%B0%E8%B4%A6%E5%8F%B7%E9%AA%8C%E8%AF%81%E5%85%B1%E4%BA%AB%E8%99%9A%E6%8B%9F%E6%9C%BA-SSH"><span class="toc-text">2. 新账号验证共享虚拟机 SSH</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/08/Tailscale%E8%BF%9C%E7%A8%8B%E8%AE%BF%E9%97%AE%E4%B8%8E%E8%B7%A8%E8%B4%A6%E5%8F%B7%E8%AE%BE%E5%A4%87%E5%85%B1%E4%BA%AB%E5%AE%9E%E8%B7%B5/" title="Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南">Tailscale 远程访问与跨账号设备共享实践：IPv6 直连、自建 DERP 与避坑指南</a><time datetime="2026-11-08T12:00:00.000Z" title="发表于 2026-11-08 20:00:00">2026-11-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/%E9%98%BF%E9%87%8C%E4%BA%91ECS%E8%87%AA%E5%BB%BATailscale-DERP/" title="在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms">在阿里云 ECS 自建 Tailscale DERP：从美国中继到 20 ms</a><time datetime="2026-11-07T15:30:00.000Z" title="发表于 2026-11-07 23:30:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/%E5%9F%BA%E4%BA%8E-SSH-SOCKS5-%E9%9A%A7%E9%81%93%E7%9A%84-Docker-%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E4%BB%A3%E7%90%86%E5%AE%9E%E8%B7%B5/" title="基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践">基于 SSH SOCKS5 隧道的 Docker 镜像拉取代理实践</a><time datetime="2026-11-07T15:20:00.000Z" title="发表于 2026-11-07 23:20:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/07/3x-ui%E4%B8%8EVLESS-REALITY%E6%90%AD%E5%BB%BA%E5%AE%9E%E5%BD%95-%E7%94%A8SSH%E9%9A%A7%E9%81%93%E5%AE%89%E5%85%A8%E7%AE%A1%E7%90%86%E9%9D%A2%E6%9D%BF/" title="3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板">3x-ui 与 VLESS-REALITY 搭建实录：用 SSH 隧道安全管理面板</a><time datetime="2026-11-06T16:55:00.000Z" title="发表于 2026-11-07 00:55:00">2026-11-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/07/%E4%BB%8E%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%88%B0Kubernetes%E9%83%A8%E7%BD%B2-%E7%94%A8GitHub-Actions%E8%87%AA%E5%8A%A8%E5%8F%91%E5%B8%83%E9%95%9C%E5%83%8F/" title="从代码提交到 Kubernetes 部署：用 GitHub Actions 自动发布镜像">从代码提交到 Kubernetes 部署：用 GitHub Actions 自动发布镜像</a><time datetime="2026-10-07T02:00:00.000Z" title="发表于 2026-10-07 10:00:00">2026-10-07</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Eiralan</span></div><div class="footer_custom_text">本博客文章除特别注明外，均采用 CC BY-NC-SA 4.0 许可协议。</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div></div></body></html>

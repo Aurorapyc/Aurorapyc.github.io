@@ -1,0 +1,1103 @@
+/* ========================================================
+   Hexo Butterfly - Frosted Glass & 2-Column Grid Tech Layout
+   ======================================================== */
+
+/* 1. 首页文章卡片与侧边栏：毛玻璃水晶渐变 */
+#recent-posts .recent-post-item,
+#aside-content .card-widget {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.78) 0%, rgba(235, 242, 250, 0.60) 100%) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08) !important;
+  transition: all 0.28s ease-in-out !important;
+}
+
+#recent-posts .recent-post-item:hover,
+#aside-content .card-widget:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.90) 0%, rgba(240, 246, 255, 0.75) 100%) !important;
+  box-shadow: 0 12px 32px -4px rgba(44, 110, 186, 0.16) !important;
+  transform: translateY(-3px) !important;
+}
+
+/* 暗色模式下的首页与侧边栏毛玻璃 */
+[data-theme="dark"] #recent-posts .recent-post-item,
+[data-theme="dark"] #aside-content .card-widget {
+  background: linear-gradient(145deg, rgba(24, 27, 38, 0.80) 0%, rgba(18, 20, 30, 0.72) 100%) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] #recent-posts .recent-post-item:hover,
+[data-theme="dark"] #aside-content .card-widget:hover {
+  background: linear-gradient(145deg, rgba(30, 34, 48, 0.90) 0%, rgba(22, 26, 38, 0.82) 100%) !important;
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 2. 【核心亮点】首页双列网格布局（2-Column Grid） */
+#recent-posts.recent-posts .recent-post-items {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+}
+
+@media screen and (max-width: 768px) {
+  #recent-posts.recent-posts .recent-post-items {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+#recent-posts .recent-post-item {
+  width: 100% !important;
+  margin-bottom: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+
+
+#recent-posts .recent-post-item .recent-post-info.no-cover {
+  width: 100% !important;
+  padding: 22px 22px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  justify-content: space-between !important;
+}
+
+/* 3. 标题与正文 */
+.recent-post-info .article-title {
+  font-size: 1.2rem !important;
+  line-height: 1.45 !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  transition: color 0.2s ease !important;
+}
+
+.recent-post-info .article-title:hover {
+  color: #2C6EBA !important;
+}
+
+.recent-post-info .content {
+  color: #475569 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.65 !important;
+  margin-top: 10px !important;
+  margin-bottom: 12px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+[data-theme="dark"] .recent-post-info .article-title {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .recent-post-info .content {
+  color: #94a3b8 !important;
+}
+
+/* 4. 元信息彩色徽章化 */
+.recent-post-info .article-meta-wrap {
+  margin-top: 6px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.recent-post-info .article-meta-separator {
+  display: none !important;
+}
+
+/* 日期芯片 */
+.recent-post-info .post-meta-date {
+  background: rgba(241, 245, 249, 0.75) !important;
+  border: 1px solid rgba(203, 213, 225, 0.5) !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  font-size: 0.76rem !important;
+  color: #475569 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+[data-theme="dark"] .recent-post-info .post-meta-date {
+  background: rgba(30, 41, 59, 0.6) !important;
+  border-color: rgba(71, 85, 105, 0.4) !important;
+  color: #94a3b8 !important;
+}
+
+/* 分类徽章：科技蓝渐变微胶囊 */
+.recent-post-info .article-meta:not(.tags) i.fa-inbox {
+  display: none !important;
+}
+
+.recent-post-info .article-meta__categories {
+  background: #205493 !important;
+  color: #ffffff !important;
+  padding: 2px 9px !important;
+  border-radius: 12px !important;
+  font-size: 0.76rem !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 6px rgba(44, 110, 186, 0.25) !important;
+  display: inline-block !important;
+  line-height: 1.5 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s ease !important;
+}
+
+.recent-post-info .article-meta__categories:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(44, 110, 186, 0.35) !important;
+}
+
+/* 标签药丸 */
+.recent-post-info .article-meta.tags i.fa-tag,
+.recent-post-info .article-meta.tags .article-meta-link {
+  display: none !important;
+}
+
+.recent-post-info .article-meta__tags {
+  background: rgba(44, 110, 186, 0.08) !important;
+  color: #1a569b !important;
+  padding: 2px 8px !important;
+  border-radius: 10px !important;
+  font-size: 0.74rem !important;
+  font-weight: 500 !important;
+  border: 1px solid rgba(44, 110, 186, 0.16) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.recent-post-info .article-meta__tags::before {
+  content: "# ";
+  opacity: 0.6;
+  margin-right: 2px;
+}
+
+.recent-post-info .article-meta__tags:hover {
+  background: #2C6EBA !important;
+  color: #ffffff !important;
+  border-color: #2C6EBA !important;
+}
+
+[data-theme="dark"] .recent-post-info .article-meta__tags {
+  background: rgba(96, 165, 250, 0.12) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.25);
+}
+
+/* 5. 【真实链接】真实的“阅读全文 →”可点击按钮 */
+.read-more-btn {
+  display: inline-block !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  color: #2C6EBA !important;
+  background: rgba(44, 110, 186, 0.08) !important;
+  padding: 4px 14px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(44, 110, 186, 0.2) !important;
+  margin-top: 10px !important;
+  align-self: flex-start !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+}
+
+.read-more-btn:hover {
+  background: #2C6EBA !important;
+  color: #ffffff !important;
+  transform: translateX(4px) !important;
+  box-shadow: 0 4px 12px rgba(44, 110, 186, 0.35) !important;
+}
+
+[data-theme="dark"] .read-more-btn {
+  color: #93c5fd !important;
+  background: rgba(96, 165, 250, 0.12) !important;
+  border-color: rgba(96, 165, 250, 0.25) !important;
+}
+
+[data-theme="dark"] .read-more-btn:hover {
+  background: #2C6EBA !important;
+  color: #ffffff !important;
+}
+
+/* 6. 文章详情页（#post / #page）：自然克制、专注阅读的高质感卡片 */
+#post,
+#page,
+.layout > div:first-child:not(#recent-posts) {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="dark"] #post,
+[data-theme="dark"] #page,
+[data-theme="dark"] .layout > div:first-child:not(#recent-posts) {
+  background: rgba(20, 24, 34, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 文章页无顶部大图时：标题直接内嵌在文章卡片顶部，干净留白 */
+#post > #post-info {
+  margin-bottom: 2rem !important;
+  padding-bottom: 1.4rem !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+#post > #post-info .post-title {
+  font-size: 1.85rem !important;
+  line-height: 1.35 !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  margin-bottom: 12px !important;
+  border-bottom: none !important;
+}
+
+#post > #post-info #post-meta {
+  color: #64748b !important;
+  font-size: 0.86rem !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+#post > #post-info #post-meta a {
+  color: #2C6EBA !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="dark"] #post > #post-info .post-title {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #post > #post-info #post-meta {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] #post > #post-info {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ========================================================
+   顶部导航栏（通透水晶毛玻璃 + 科技蓝流光 + 胶囊悬浮菜单）
+   ======================================================== */
+
+#page-header.not-top-img {
+  background: transparent !important;
+  box-shadow: none !important;
+  height: 60px !important;
+}
+
+#page-header.not-top-img #nav,
+#page-header.nav-fixed #nav {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 站点品牌 Logo：沉稳克制的极简排版，告别塑料感渐变 */
+#nav #blog-info {
+  display: flex !important;
+  align-items: center !important;
+}
+
+#nav #blog-info a .site-name {
+  font-size: 1.22rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #0f172a !important;
+  transition: color 0.2s ease !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+#nav #blog-info a.nav-site-title .site-name {
+  color: #2C6EBA !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+  transition: all 0.22s ease !important;
+}
+
+#nav #blog-info a.nav-site-title:hover .site-name {
+  color: #1a4f8b !important;
+  opacity: 0.88;
+}
+
+/* 滚动时显示的返回文章标题与返回首页按钮 */
+#nav #blog-info a.nav-page-title .site-name {
+  font-size: 0.96rem !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  -webkit-text-fill-color: initial !important;
+  background: none !important;
+}
+
+#nav #blog-info a.nav-page-title:hover .site-name {
+  color: #2C6EBA !important;
+}
+
+/* 右侧菜单栏：胶囊悬浮交互 */
+#nav .menus_items {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+#nav .menus_items .menus_item {
+  padding: 0 !important;
+}
+
+#nav .menus_items .menus_item .site-page {
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-size: 0.88rem !important;
+  font-weight: 550 !important;
+  color: #334155 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  transition: all 0.22s ease-in-out !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  text-shadow: none !important;
+}
+
+#nav .menus_items .menus_item .site-page i {
+  color: #64748b !important;
+  transition: color 0.22s ease !important;
+  font-size: 0.88em !important;
+}
+
+#nav .menus_items .menus_item .site-page:hover {
+  background: rgba(44, 110, 186, 0.1) !important;
+  color: #2C6EBA !important;
+  border-color: rgba(44, 110, 186, 0.18) !important;
+  transform: translateY(-1px) !important;
+}
+
+#nav .menus_items .menus_item .site-page:hover i {
+  color: #2C6EBA !important;
+}
+
+#nav #toggle-menu .site-page {
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  color: #334155 !important;
+  text-shadow: none !important;
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] #page-header.not-top-img #nav,
+[data-theme="dark"] #page-header.nav-fixed #nav {
+  background: rgba(18, 22, 34, 0.72) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] #nav #blog-info a.nav-site-title .site-name {
+  color: #60a5fa !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+[data-theme="dark"] #nav #blog-info a.nav-page-title .site-name {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #nav .menus_items .menus_item .site-page {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #nav .menus_items .menus_item .site-page i {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] #nav .menus_items .menus_item .site-page:hover {
+  background: rgba(96, 165, 250, 0.16) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.25) !important;
+}
+
+[data-theme="dark"] #nav .menus_items .menus_item .site-page:hover i {
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] #nav #toggle-menu .site-page {
+  color: #cbd5e1 !important;
+}
+
+/* 7. 代码块与正文容器融合 */
+#article-container .highlight-wrap,
+#article-container figure.highlight {
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  margin: 1.4rem 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="dark"] #article-container .highlight-wrap,
+[data-theme="dark"] #article-container figure.highlight {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 8. 正文标题装饰 */
+#article-container h2 {
+  position: relative;
+  padding-left: 14px;
+  margin: 2rem 0 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 8px;
+}
+
+#article-container h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 4px;
+  background: #2C6EBA;
+  border-radius: 3px;
+}
+
+#article-container :not(pre) > code {
+  background: rgba(44, 110, 186, 0.08) !important;
+  color: #1a569b !important;
+  padding: 2px 7px !important;
+  margin: 0 4px !important;
+  border-radius: 5px !important;
+  font-size: 0.88em !important;
+  border: 1px solid rgba(44, 110, 186, 0.12) !important;
+}
+
+[data-theme="dark"] #article-container :not(pre) > code {
+  background: rgba(96, 165, 250, 0.14) !important;
+  color: #93c5fd !important;
+  border: 1px solid rgba(96, 165, 250, 0.2) !important;
+}
+
+#aside-content .card-widget {
+  margin-bottom: 20px !important;
+}
+
+/* 9. 正文内容组件美化（打破通篇大白的单调） */
+
+/* 引用块（Blockquote）：现代微质感卡片化 */
+#article-container blockquote {
+  background: rgba(44, 110, 186, 0.05) !important;
+  border-radius: 0 10px 10px 0 !important;
+  padding: 12px 18px !important;
+  margin: 1.5rem 0 !important;
+  color: #334155 !important;
+}
+
+[data-theme="dark"] #article-container blockquote {
+  background: rgba(96, 165, 250, 0.08) !important;
+  border-left-color: #60a5fa !important;
+  color: #cbd5e1 !important;
+}
+
+/* ========================================================
+   正文独立表格高清晰度设计（仅作用于 Markdown 表格，彻底隔离代码块）
+   ======================================================== */
+#article-container .table-wrap {
+  margin: 1.8rem 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+#article-container .table-wrap > table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background: #ffffff !important;
+  font-size: 0.92rem !important;
+  margin: 0 !important;
+}
+
+#article-container .table-wrap > table th {
+  background: #eaf1f8 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  padding: 11px 16px !important;
+  border-bottom: 2px solid #94a3b8 !important;
+  border-right: 1px solid #cbd5e1 !important;
+  text-align: left !important;
+}
+
+#article-container .table-wrap > table th:last-child {
+  border-right: none !important;
+}
+
+#article-container .table-wrap > table td {
+  padding: 10px 16px !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-right: 1px solid #e2e8f0 !important;
+  line-height: 1.6 !important;
+}
+
+#article-container .table-wrap > table td:last-child {
+  border-right: none !important;
+}
+
+#article-container .table-wrap > table tbody tr:nth-child(even) td {
+  background: #f8fafc !important;
+}
+
+#article-container .table-wrap > table tbody tr:hover td {
+  background: #f1f5f9 !important;
+}
+
+/* 暗色模式高对比度独立表格 */
+[data-theme="dark"] #article-container .table-wrap {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+[data-theme="dark"] #article-container .table-wrap > table {
+  background: #181d28 !important;
+}
+
+[data-theme="dark"] #article-container .table-wrap > table th {
+  background: #202737 !important;
+  color: #f1f5f9 !important;
+  border-bottom: 2px solid #3b82f6 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] #article-container .table-wrap > table td {
+  color: #cbd5e1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] #article-container .table-wrap > table tbody tr:nth-child(even) td {
+  background: #1d2331 !important;
+}
+
+[data-theme="dark"] #article-container .table-wrap > table tbody tr:hover td {
+  background: #242c3d !important;
+}
+
+/* 保护代码块：彻底消除表格样式对代码块内部 table/td 结构的污染 */
+#article-container figure.highlight table,
+#article-container figure.highlight table tbody,
+#article-container figure.highlight table tr,
+#article-container figure.highlight table td,
+#article-container figure.highlight table th {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* 版权声明卡片（.post-copyright）美化 */
+.post-copyright {
+  background: rgba(248, 250, 252, 0.85) !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  padding: 14px 20px !important;
+  margin-top: 36px !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .post-copyright {
+  background: rgba(30, 34, 48, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-left-color: #60a5fa !important;
+}
+
+/* 文章底部的标签胶囊 */
+.tag_share .post-meta__tags {
+  background: rgba(44, 110, 186, 0.08) !important;
+  color: #1a569b !important;
+  padding: 3px 10px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(44, 110, 186, 0.16) !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-right: 6px !important;
+}
+
+.tag_share .post-meta__tags:hover {
+  background: #2C6EBA !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-theme="dark"] .tag_share .post-meta__tags {
+  background: rgba(96, 165, 250, 0.12) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.25) !important;
+}
+
+/* ========================================================
+   文章底部“上一篇/下一篇”与“相关推荐”现代清爽美化
+   ======================================================== */
+
+/* 1. 上一篇 / 下一篇导航重构（告别阴暗黑底，改为清爽双栏卡片） */
+/* 1. 彻底禁用 Butterfly 原生 hover 切换 info-2 隐藏 info-1 的动画逻辑 */
+.pagination-related .info .info-1,
+.pagination-related:hover .info .info-1,
+.pagination-related:not(.no-desc):hover .info .info-1,
+#pagination.pagination-post .pagination-related .info .info-1,
+#pagination.pagination-post .pagination-related:hover .info .info-1,
+.relatedPosts > .relatedPosts-list > a .info .info-1,
+.relatedPosts > .relatedPosts-list > a:hover .info .info-1 {
+  position: static !important;
+  top: auto !important;
+  width: 100% !important;
+  padding: 0 !important;
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+  display: block !important;
+}
+
+.pagination-related .info .info-2,
+.pagination-related:hover .info .info-2,
+.pagination-related:not(.no-desc):hover .info .info-2,
+#pagination.pagination-post .pagination-related .info .info-2,
+#pagination.pagination-post .pagination-related:hover .info .info-2,
+.relatedPosts > .relatedPosts-list > a .info .info-2,
+.relatedPosts > .relatedPosts-list > a:hover .info .info-2 {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 2. 上一篇 / 下一篇导航重构（告别阴暗黑底，改为清爽双栏卡片） */
+#pagination.pagination-post {
+  background: transparent !important;
+  margin-top: 36px !important;
+  gap: 14px !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+}
+
+#pagination.pagination-post .pagination-related {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  height: 90px !important;
+  box-shadow: none !important;
+  transition: all 0.25s ease-in-out !important;
+}
+
+#pagination.pagination-post .pagination-related:hover {
+  background: #ffffff !important;
+  border-color: #2C6EBA !important;
+  box-shadow: 0 6px 18px rgba(44, 110, 186, 0.12) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* 隐藏笨重的暗色背景图与遮罩 */
+#pagination.pagination-post .pagination-related img.cover,
+#pagination.pagination-post .pagination-related .cover {
+  display: none !important;
+}
+
+#pagination.pagination-post .pagination-related .info {
+  position: static !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 14px 20px !important;
+}
+
+#pagination.pagination-post .pagination-related .info .info-1 .info-item-1 {
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: #2C6EBA !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 4px !important;
+}
+
+#pagination.pagination-post .pagination-related .info .info-1 .info-item-2 {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  transition: color 0.2s ease !important;
+}
+
+#pagination.pagination-post .pagination-related:hover .info .info-1 .info-item-2 {
+  color: #2C6EBA !important;
+}
+
+/* 3. 相关推荐（.relatedPosts）重构为现代工整网格卡片 */
+.relatedPosts {
+  margin-top: 36px !important;
+}
+
+.relatedPosts > .headline {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  margin-bottom: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* 消除 3+1 的怪异排列，使用自适应 CSS Grid（自动 2 列或等分网格） */
+.relatedPosts > .relatedPosts-list {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.relatedPosts > .relatedPosts-list > a {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 105px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  transition: all 0.25s ease-in-out !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.relatedPosts > .relatedPosts-list > a:hover {
+  background: #ffffff !important;
+  border-color: #2C6EBA !important;
+  box-shadow: 0 6px 18px rgba(44, 110, 186, 0.12) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* 去掉相关推荐的暗黑压抑底图 */
+.relatedPosts > .relatedPosts-list > a img.cover,
+.relatedPosts > .relatedPosts-list > a .cover {
+  display: none !important;
+}
+
+.relatedPosts > .relatedPosts-list .info {
+  position: static !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 14px 18px !important;
+}
+
+.relatedPosts > .relatedPosts-list .info .info-1 .info-item-1 {
+  font-size: 0.76rem !important;
+  color: #64748b !important;
+  margin-bottom: 6px !important;
+}
+
+.relatedPosts > .relatedPosts-list .info .info-1 .info-item-2 {
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  line-height: 1.4 !important;
+  -webkit-line-clamp: 2 !important;
+  transition: color 0.2s ease !important;
+}
+
+.relatedPosts > .relatedPosts-list > a:hover .info .info-1 .info-item-2 {
+  color: #2C6EBA !important;
+}
+
+/* 4. 暗色模式适配 */
+[data-theme="dark"] .relatedPosts > .headline {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #pagination.pagination-post .pagination-related,
+[data-theme="dark"] .relatedPosts > .relatedPosts-list > a {
+  background: rgba(30, 34, 48, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] #pagination.pagination-post .pagination-related:hover,
+[data-theme="dark"] .relatedPosts > .relatedPosts-list > a:hover {
+  background: rgba(37, 42, 60, 0.95) !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] #pagination.pagination-post .pagination-related .info .info-1 .info-item-1 {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .relatedPosts > .relatedPosts-list .info .info-1 .info-item-1 {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] #pagination.pagination-post .pagination-related .info .info-1 .info-item-2,
+[data-theme="dark"] .relatedPosts > .relatedPosts-list .info .info-1 .info-item-2 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #pagination.pagination-post .pagination-related:hover .info .info-1 .info-item-2,
+[data-theme="dark"] .relatedPosts > .relatedPosts-list > a:hover .info .info-1 .info-item-2 {
+  color: #60a5fa !important;
+}
+
+
+/* ========================================================
+   WCAG AA 无障碍对比度与 Impeccable 规范对齐
+   ======================================================== */
+#aside-content .card-widget .item-headline {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+#aside-content .card-widget .aside-list-item .content time,
+#aside-content .card-widget .card-tag-cloud a,
+#aside-content .card-widget .card-archive-list-count,
+#aside-content .card-widget .card-category-list-count,
+#aside-content .card-info .author-info__description {
+  color: #475569 !important;
+}
+
+[data-theme="dark"] #aside-content .card-widget .item-headline {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #aside-content .card-widget .aside-list-item .content time,
+[data-theme="dark"] #aside-content .card-widget .card-tag-cloud a,
+[data-theme="dark"] #aside-content .card-widget .card-archive-list-count,
+[data-theme="dark"] #aside-content .card-widget .card-category-list-count,
+[data-theme="dark"] #aside-content .card-info .author-info__description {
+  color: #94a3b8 !important;
+}
+
+/* 浅色模式代码块高对比度高亮（满足 WCAG AA 4.5:1） */
+:root:not([data-theme="dark"]) figure.highlight .comment { color: #526071 !important; font-style: italic; }
+:root:not([data-theme="dark"]) figure.highlight .string { color: #047857 !important; }
+:root:not([data-theme="dark"]) figure.highlight .keyword { color: #b91c1c !important; font-weight: 600; }
+:root:not([data-theme="dark"]) figure.highlight .number { color: #c2410c !important; }
+:root:not([data-theme="dark"]) figure.highlight .title,
+:root:not([data-theme="dark"]) figure.highlight .function { color: #1d4ed8 !important; }
+
+/* ========================================================
+   暗色模式代码块彻底告别“全黑 void”——转为现代 One Dark 蓝灰编辑质感
+   ======================================================== */
+[data-theme="dark"] figure.highlight {
+  background: #181d28 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+}
+
+[data-theme="dark"] figure.highlight .highlight-tools {
+  background: #202737 !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] figure.highlight table {
+  background: #181d28 !important;
+  border: none !important;
+}
+
+[data-theme="dark"] figure.highlight .gutter {
+  background: #141822 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: none !important;
+}
+
+[data-theme="dark"] figure.highlight .gutter pre {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] figure.highlight .code {
+  border-bottom: none !important;
+  border-right: none !important;
+}
+
+[data-theme="dark"] figure.highlight .code pre {
+  background: #181d28 !important;
+  color: #e2e8f0 !important;
+}
+
+/* 暗色模式明快清晰的 VS Code / One Dark 语法着色 */
+[data-theme="dark"] figure.highlight .keyword { color: #f472b6 !important; font-weight: 600; }
+[data-theme="dark"] figure.highlight .string { color: #38bdf8 !important; }
+[data-theme="dark"] figure.highlight .comment { color: #94a3b8 !important; font-style: italic; }
+[data-theme="dark"] figure.highlight .number { color: #fb923c !important; }
+[data-theme="dark"] figure.highlight .title,
+[data-theme="dark"] figure.highlight .function { color: #60a5fa !important; font-weight: 600; }
+[data-theme="dark"] figure.highlight .variable,
+[data-theme="dark"] figure.highlight .attr { color: #c084fc !important; }
+[data-theme="dark"] figure.highlight .tag { color: #f87171 !important; }
+
+/* ========================================================
+   TOC 目录高亮与可读性优化（彻底解决蓝底蓝字遮挡问题）
+   ======================================================== */
+#aside-content #card-toc .item-headline {
+  color: #0f172a !important;
+}
+
+#aside-content #card-toc .toc-content .toc-link {
+  color: #475569 !important;
+  border-radius: 6px !important;
+  padding: 3px 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+#aside-content #card-toc .toc-content .toc-link:hover {
+  color: #2C6EBA !important;
+  background: rgba(44, 110, 186, 0.08) !important;
+}
+
+#aside-content #card-toc .toc-content .toc-link.active {
+  background: rgba(44, 110, 186, 0.12) !important;
+  color: #1a569b !important;
+  font-weight: 600 !important;
+}
+
+/* 暗色模式 TOC 目录适配：微发光透亮胶囊，文字绝不遮挡 */
+[data-theme="dark"] #aside-content #card-toc .item-headline {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #aside-content #card-toc .toc-content .toc-link {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] #aside-content #card-toc .toc-content .toc-link:hover {
+  color: #93c5fd !important;
+  background: rgba(96, 165, 250, 0.12) !important;
+}
+
+[data-theme="dark"] #aside-content #card-toc .toc-content .toc-link.active {
+  background: rgba(96, 165, 250, 0.22) !important;
+  color: #93c5fd !important;
+  font-weight: 600 !important;
+}
+
+/* 消除代码块外壳的嵌套卡片阴影，使其轻量内嵌 */
+#article-container .highlight-wrap,
+#article-container figure.highlight {
+  box-shadow: none !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+}
+
+/* 标题平衡换行与正文元信息高清晰度 */
+#post > #post-info .post-title,
+#article-container h1,
+#article-container h2,
+#article-container h3 {
+  text-wrap: balance !important;
+}
+
+#post > #post-info #post-meta,
+#post > #post-info #post-meta .post-meta-date,
+#post > #post-info #post-meta time {
+  color: #334155 !important;
+}
+
+[data-theme="dark"] #post > #post-info #post-meta,
+[data-theme="dark"] #post > #post-info #post-meta .post-meta-date,
+[data-theme="dark"] #post > #post-info #post-meta time {
+  color: #cbd5e1 !important;
+}
+
+/* 浅色模式代码块：纯净统一的 GitHub 浅灰质感，消除突兀白块与色温冲突 */
+:root:not([data-theme="dark"]) #article-container figure.highlight {
+  background: #f6f8fa !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+:root:not([data-theme="dark"]) #article-container figure.highlight .highlight-tools {
+  background: #edf2f7 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+:root:not([data-theme="dark"]) #article-container figure.highlight .gutter {
+  background: #f1f5f9 !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+:root:not([data-theme="dark"]) #article-container figure.highlight .gutter pre {
+  color: #94a3b8 !important;
+}
+
+:root:not([data-theme="dark"]) #article-container figure.highlight .code pre {
+  background: #f6f8fa !important;
+  color: #24292f !important;
+  padding: 10px 14px !important;
+}
+
+/* ========================================================
+   底部页脚（#footer）沉浸式透明美化——告别突兀的实心灰条
+   ======================================================== */
+#footer {
+  background: transparent !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  position: relative !important;
+  margin-top: 2rem !important;
+}
+
+#footer::before {
+  display: none !important;
+}
+
+#footer .footer-other {
+  padding: 30px 20px !important;
+  background: transparent !important;
+}
+
+#footer .footer-copyright,
+#footer .footer_custom_text,
+#footer .copyright {
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-size: 0.85rem !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+  line-height: 1.7 !important;
+}
+
+#footer a {
+  color: rgba(255, 255, 255, 0.88) !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+}
+
+#footer a:hover {
+  color: #60a5fa !important;
+  text-decoration: underline !important;
+}
